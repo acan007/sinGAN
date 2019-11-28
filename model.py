@@ -83,18 +83,32 @@ class SinGAN(nn.Module):
             self.scheduler_d.step()
             self.scheduler_g.step()
 
-    def generate_fake_image(self, scale):  # TODO : naming
-        generated = None
+    def generate_fake_image(self, scale):  # TODO : noise_amp
+        fake_image = None
         for s in range(scale + 1):
-            if type(generated) != type(None):
-                generated = nn.Upsample((self.width_pyramid[s], self.height_pyramid[s]))(generated)
+            if type(fake_image) != type(None):
+                fake_image = nn.Upsample((self.width_pyramid[s], self.height_pyramid[s]))(fake_image)
 
             noise = torch.randn_like(self.real_pyramid[s])
             generator = self.generator_pyramid[s]
 
-            generated = generator(generated, noise)
+            fake_image = generator(fake_image, noise)
 
-        return generated
+        return fake_image
+
+    def generate_recon_image(self, scale):
+        recon_image = None
+        for s in range(scale + 1):
+            if type(recon_image) != type(None):
+                recon_image = nn.Upsample((self.width_pyramid[s], self.height_pyramid[s]))(recon_image)
+
+            noise_optimal = self.noise_optimal_pyramid[s]
+            generator = self.generator_pyramid[s]
+
+            recon_image = generator(recon_image, noise_optimal)
+
+        return recon_image
+
 
     def update_d(self, real, fake):
         reset_gradients([self.optimizer_d, self.optimizer_g])
@@ -112,16 +126,16 @@ class SinGAN(nn.Module):
 
         self.optimizer_d.step()
 
-    def update_g(self, real, fake, noise_optimal):
+    def update_g(self, real, fake, recon):
         reset_gradients([self.optimizer_d, self.optimizer_g])
 
         # TODO : real을 upsampled 된 애로 바꾸자
-        self.loss_recon = self.criterion_l1(self.generator(real, noise_optimal), real) * self.w_recon
+        self.loss_recon = self.criterion_l1(recon, real) * self.w_recon
         self.loss_recon.backward()
 
         logit_g = self.discriminator(fake)
         self.loss_g = logit_g.mean()
-        self.loss_g.backward(self.mone, )
+        self.loss_g.backward(self.mone)
 
         self.optimizer_g.step()
 
@@ -158,7 +172,8 @@ class SinGAN(nn.Module):
 
         for step in range(self.config['g_step']):
             self.fake = self.generate_fake_image(scale)
-            self.update_g(self.real, self.fake, self.noise_optimal)
+            self.recon = self.generate_recon_image(scale)
+            self.update_g(self.real, self.fake, self.recon)
 
     def eval_mode_all(self):
         self.generator_a.eval()

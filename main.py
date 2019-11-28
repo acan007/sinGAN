@@ -50,6 +50,7 @@ def main(config, location, load_path, resume):
     path_img_save = config['path_img_save']
     path_model_save = config['path_model_save']
     input = plt.imread(path_img_load)[:, :, :3]
+    input = (input - 0.5) * 2
     config = adjust_scale_factor_by_image(input, config)
 
     # train opts
