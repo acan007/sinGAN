@@ -60,13 +60,13 @@ class Discriminator(nn.Module):
         self.layers = layers
         self.model = nn.Sequential(*layers)
 
-    def calculate_gradient_penalty(self, real_images, fake_images):
+    def calculate_gradient_penalty(self, real_images, fake_images, device):
         eta = torch.FloatTensor(1, 1, 1, 1).uniform_(0, 1)
-        eta = eta.expand(1, real_images.size(1), real_images.size(2), real_images.size(3))
+        eta = eta.expand(1, real_images.size(1), real_images.size(2), real_images.size(3)).to(device)
         # if self.cuda:
-        #     eta = eta.cuda(self.cuda_index)
-        # else:
-        #     eta = eta
+        #             eta = eta.cuda(self.cuda_index)
+        #         else:
+        #             eta = eta
 
         interpolated = eta * real_images + ((1 - eta) * fake_images)
 
@@ -86,7 +86,7 @@ class Discriminator(nn.Module):
                                   # grad_outputs=torch.ones(
                                   #     prob_interpolated.size()).cuda(self.cuda_index) if self.cuda else torch.ones(
                                   #     prob_interpolated.size()),
-                                  grad_outputs=torch.ones(prob_interpolated.size()),
+                                  grad_outputs=torch.ones(prob_interpolated.size()).to(device),
                                   create_graph=True, retain_graph=True)[0]
 
         grad_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()

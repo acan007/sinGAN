@@ -16,9 +16,9 @@ class SinGAN(nn.Module):
     def __init__(self, input, config, device):
         super(SinGAN, self).__init__()
 
+        self.input = (input - 0.5) * 2
         self.config = config
         self.device = device
-        self.input = input.to(self.device)
 
         self.lr = config['lr']
         self.beta1 = config['beta1']
@@ -27,8 +27,8 @@ class SinGAN(nn.Module):
         num_scale = config['num_scale']
         scale_factor = config['scale_factor']
 
-        self.one = torch.FloatTensor([1])[0]
-        self.mone = torch.FloatTensor([-1])[0]  # self.one * -1
+        self.one = torch.FloatTensor([1])[0].to(self.device)
+        self.mone = torch.FloatTensor([-1])[0].to(self.device)  # self.one * -1
         self.w_recon = config['w_recon']
         self.w_gp = config['w_gp']
 
@@ -43,17 +43,17 @@ class SinGAN(nn.Module):
             self.height_pyramid.append(height_scaled)
             self.width_pyramid.append(width_scaled)
 
-            self.input = (self.input - 0.5) * 2
-            self.input = cv2.resize(self.input, (height_scaled, width_scaled))
-            self.input = torch.tensor(np.transpose(self.input, [2, 0, 1])[np.newaxis])
-            self.real_pyramid.append(self.input)
+            processed = cv2.resize(self.input, (height_scaled, width_scaled))
+            processed = torch.tensor(np.transpose(processed, [2, 0, 1])[np.newaxis])
+            self.real_pyramid.append(processed.to(self.device))
+        #         self.input.to(device)
 
         self.noise_optimal_pyramid = []
         for scale in range(num_scale):
             if not scale:
-                noise = torch.randn_like(self.real_pyramid[scale])
+                noise = torch.randn_like(self.real_pyramid[scale]).to(self.device)
             else:
-                noise = torch.zeros_like(self.real_pyramid[scale])
+                noise = torch.zeros_like(self.real_pyramid[scale]).to(self.device)
             self.noise_optimal_pyramid.append(noise)
 
         self.generator_pyramid, self.discriminator_pyramid = [], []
@@ -77,7 +77,7 @@ class SinGAN(nn.Module):
         # self.discriminator_a.apply(weights_init('gaussian'))
         # self.discriminator_b.apply(weights_init('gaussian'))
         #
-        self.criterion_l1 = nn.L1Loss()
+        self.criterion_l2 = nn.MSELoss()
         # self.criterion_l2 = nn.MSELoss()
 
         self.to(device)
@@ -87,9 +87,24 @@ class SinGAN(nn.Module):
             self.scheduler_d.step()
             self.scheduler_g.step()
 
-    def get_sigma(self, real, recon):
-        sigma = torch.sqrt(nn.MSELoss(real, recon))
+    def get_sigma(self, scale, real):
+        if not scale:
+            sigma = 1
+
+        else:
+            recon = None
+            for s in range(scale):
+                generator = self.generator_pyramid[s]
+                noise_optimal = self.noise_optimal_pyramid[s]
+                sigma = self.sigma_pyramid[s]
+
+                recon = generator(recon, noise_optimal * sigma)
+                recon = nn.Upsample((self.width_pyramid[s + 1], self.height_pyramid[s + 1]))(recon)            
+                
+            sigma = torch.sqrt(self.criterion_l2(real, recon))
+            
         self.sigma_pyramid.append(sigma)
+        assert len(self.sigma_pyramid) == (scale + 1) 
         return sigma
 
     def generate_fake_image(self, scale):  # TODO : noise_amp
@@ -98,10 +113,11 @@ class SinGAN(nn.Module):
             if type(fake_image) != type(None):
                 fake_image = nn.Upsample((self.width_pyramid[s], self.height_pyramid[s]))(fake_image)
 
-            noise = torch.randn_like(self.real_pyramid[s])
             generator = self.generator_pyramid[s]
+            noise = torch.randn_like(self.real_pyramid[s]).to(self.device)
+            sigma = self.sigma_pyramid[s]
 
-            fake_image = generator(fake_image, noise)
+            fake_image = generator(fake_image, noise * sigma)
 
         return fake_image
 
@@ -113,8 +129,9 @@ class SinGAN(nn.Module):
 
             generator = self.generator_pyramid[s]
             noise_optimal = self.noise_optimal_pyramid[s]
+            sigma = self.sigma_pyramid[s]
 
-            recon_image = generator(recon_image, noise_optimal)
+            recon_image = generator(recon_image, noise_optimal * sigma)
 
         return recon_image
 
@@ -129,7 +146,7 @@ class SinGAN(nn.Module):
         self.loss_d_fake = logit_fake.mean()
         self.loss_d_fake.backward(self.one)
 
-        self.gradient_penalty = self.discriminator.calculate_gradient_penalty(real, fake) * self.w_gp
+        self.gradient_penalty = self.discriminator.calculate_gradient_penalty(real, fake, self.device) * self.w_gp
         self.gradient_penalty.backward()
 
         self.optimizer_d.step()
@@ -138,7 +155,7 @@ class SinGAN(nn.Module):
         reset_gradients([self.optimizer_d, self.optimizer_g])
 
         # TODO : real을 upsampled 된 애로 바꾸자
-        self.loss_recon = self.criterion_l1(recon, real) * self.w_recon
+        self.loss_recon = self.criterion_l2(recon, real) * self.w_recon
         self.loss_recon.backward()
 
         logit_g = self.discriminator(fake)
@@ -147,18 +164,36 @@ class SinGAN(nn.Module):
 
         self.optimizer_g.step()
 
-    def train_pyramid(self, scale):
-        # self.scheduler_d = get_scheduler(self.optimizer_d, self.config)
-        # self.scheduler_g = get_scheduler(self.optimizer_g, self.config)
+    def assign_network_at_scale_begin(self, scale):
+        self.generator = self.generator_pyramid[scale].cuda()
+        self.discriminator = self.discriminator_pyramid[scale].cuda()
+        self.noise_optimal = self.noise_optimal_pyramid[scale]
+
+        params_d = list(self.discriminator.parameters())
+        params_g = list(self.generator.parameters())
+        self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2),
+                                            weight_decay=self.weight_decay)
+        self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2),
+                                            weight_decay=self.weight_decay)
 
         # --- init weights
         if not scale % 4:
+            print("Init weight G & D")
             self.apply(weights_init(self.config['init']))
             self.discriminator.apply(weights_init('gaussian'))
         else:
             print("Copy weight from previous pyramid G & D")
             self.generator.load_state_dict(self.generator_pyramid[scale - 1].state_dict())
             self.discriminator.load_state_dict(self.discriminator_pyramid[scale - 1].state_dict())
+
+    def assign_parameters_at_scale_begin(self, scale):
+        self.scale = scale
+        self.real = self.real_pyramid[scale]
+        self.sigma = self.get_sigma(scale, self.real)
+
+    def train_single_scale_pyramid(self, scale):
+        # self.scheduler_d = get_scheduler(self.optimizer_d, self.config)
+        # self.scheduler_g = get_scheduler(self.optimizer_g, self.config)
 
         # --- forward and back prob
         for step in range(self.config['d_step']):
@@ -175,27 +210,13 @@ class SinGAN(nn.Module):
         for scale in range(self.config['num_scale']):
             for step in range(self.config['n_iter']):
                 if not step:
-                    print(scale, "-" * 100)
-                    self.scale = scale
-                    self.real = self.real_pyramid[self.scale]
-                    self.generator = self.generator_pyramid[self.scale]
-                    self.discriminator = self.discriminator_pyramid[self.scale]
-                    self.noise_optimal = self.noise_optimal_pyramid[self.scale]
+                    print("scale", scale + 1, "-" * 100)
+                    self.assign_network_at_scale_begin(scale)
+                    self.assign_parameters_at_scale_begin(scale)
 
-                    params_d = list(self.discriminator.parameters())
-                    params_g = list(self.generator.parameters())
-                    self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2),
-                                                        weight_decay=self.weight_decay)
-                    self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2),
-                                                        weight_decay=self.weight_decay)
-
-                    self.recon = self.generate_recon_image(scale)
-                    self.sigma = self.get_sigma(self.real, self.recon)
-
-                self.train_pyramid(scale)
-                if not (step + 1) % 100:
+                self.train_single_scale_pyramid(scale)
+                if not (step + 1) % 200:
                     self.print_log(scale + 1, step + 1)
-
 
     def eval_mode_all(self):
         self.generator_a.eval()
