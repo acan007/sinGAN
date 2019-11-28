@@ -18,6 +18,7 @@ class SinGAN(nn.Module):
 
         self.config = config
         self.device = device
+        self.input = input.to(self.device)
 
         self.lr = config['lr']
         self.beta1 = config['beta1']
@@ -31,7 +32,7 @@ class SinGAN(nn.Module):
         self.w_recon = config['w_recon']
         self.w_gp = config['w_gp']
 
-        width, height, _ = input.shape
+        width, height, _ = self.input.shape
         self.height_pyramid, self.width_pyramid, self.real_pyramid = [], [], []
         for i in range(num_scale, -1, -1):
             multiplier = (1 / scale_factor) ** i
@@ -42,9 +43,10 @@ class SinGAN(nn.Module):
             self.height_pyramid.append(height_scaled)
             self.width_pyramid.append(width_scaled)
 
-            raw_scaled = cv2.resize(input, (height_scaled, width_scaled))
-            raw_scaled = torch.tensor(np.transpose(raw_scaled, [2, 0, 1])[np.newaxis])
-            self.real_pyramid.append(raw_scaled)
+            self.input = (self.input - 0.5) * 2
+            self.input = cv2.resize(self.input, (height_scaled, width_scaled))
+            self.input = torch.tensor(np.transpose(self.input, [2, 0, 1])[np.newaxis])
+            self.real_pyramid.append(self.input)
 
         self.noise_optimal_pyramid = []
         for scale in range(num_scale):
