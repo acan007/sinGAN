@@ -83,6 +83,19 @@ class SinGAN(nn.Module):
             self.scheduler_d.step()
             self.scheduler_g.step()
 
+    def generate_fake_image(self, scale):  # TODO : naming
+        generated = None
+        for s in range(scale + 1):
+            if type(generated) != type(None):
+                generated = nn.Upsample((self.width_pyramid[s], self.height_pyramid[s]))(generated)
+
+            noise = torch.randn_like(self.real_pyramid[s])
+            generator = self.generator_pyramid[s]
+
+            generated = generator(generated, noise)
+
+        return generated
+
     def update_d(self, real, fake):
         reset_gradients([self.optimizer_d, self.optimizer_g])
 
@@ -129,6 +142,7 @@ class SinGAN(nn.Module):
         # self.scheduler_d = get_scheduler(self.optimizer_d, self.config)
         # self.scheduler_g = get_scheduler(self.optimizer_g, self.config)
 
+        # --- init weights
         if not scale % 4:
             self.apply(weights_init(self.config['init']))
             self.discriminator.apply(weights_init('gaussian'))
@@ -137,16 +151,13 @@ class SinGAN(nn.Module):
             self.generator.load_state_dict(self.generator_pyramid[scale - 1].state_dict())
             self.discriminator.load_state_dict(self.discriminator_pyramid[scale - 1].state_dict())
 
+        # --- forward and back prob
         for step in range(self.config['d_step']):
-            self.noise = torch.rand_like(self.real)
-            self.fake = self.generator(self.real, self.noise)
-
+            self.fake = self.generate_fake_image(scale)
             self.update_d(self.real, self.fake)
 
         for step in range(self.config['g_step']):
-            self.noise = torch.rand_like(self.real)
-            self.fake = self.generator(self.real, self.noise)
-
+            self.fake = self.generate_fake_image(scale)
             self.update_g(self.real, self.fake, self.noise_optimal)
 
     def eval_mode_all(self):

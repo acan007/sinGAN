@@ -25,14 +25,23 @@ class Generator(nn.Module):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x, noise):
-        x_pad = self.pad(x)
-        noise_pad = self.pad(x)
-        # logit = x + noise
-        # for layer in self.layers:
-        #     logit = layer(logit)
-        #     print(logit.shape)
-        # return x[:, :, 5:-5, 5:-5] + logit
-        return x + self.model(x_pad + noise_pad)
+        # for coarsest scale
+        if type(x) == type(None):
+            noise_pad = self.pad(noise)
+            return self.model(noise_pad)
+
+        # else than coarsest scale
+        else:
+            x_pad = self.pad(x)
+            noise_pad = self.pad(x)
+
+            # logit = x + noise
+            # for layer in self.layers:
+            #     logit = layer(logit)
+            #     print(logit.shape)
+            # return x[:, :, 5:-5, 5:-5] + logit
+
+            return x + self.model(x_pad + noise_pad)
 
 
 class Discriminator(nn.Module):

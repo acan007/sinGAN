@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import click
+from tqdm import tqdm
 import torch
 import matplotlib.pyplot as plt
 
@@ -45,7 +46,7 @@ def main(config, location, load_path, resume):
     config = get_config(config)
 
     # data loader
-    path_img_load = os.path.join(config['path_data_base'], config['path_data'])
+    path_img_load = os.path.join(get_dataset_path(), config['path_data'])
     path_img_save = config['path_img_save']
     path_model_save = config['path_model_save']
     input = plt.imread(path_img_load)[:, :, :3]
@@ -66,13 +67,13 @@ def main(config, location, load_path, resume):
     # train
     print("Start sinGAN Training")
     for scale in range(config['num_scale']):
-        for step in range(config['n_iter']):
+        for step in tqdm(range(config['n_iter'])):
             model.train_pyramid(scale)
             if not (step + 1) % 100:
-                model.print_log(scale, step + 1)
+                model.print_log(scale + 1, step + 1)
         print(scale, "-" * 100)
-    #
-    #
+
+
     # iters = 0
     # while iters <= max_iters:
     #     for iters, (real_a, real_b, _, _) in enumerate(train_loader):
