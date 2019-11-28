@@ -60,6 +60,8 @@ class SinGAN(nn.Module):
             self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5))
             self.discriminator_pyramid.append(Discriminator(input_dim=3, dim=dim, n_layers=5))
 
+        self.sigma_pyramid = []
+
         # TODO
         # params_d = list(self.discriminator_a.parameters()) + list(self.discriminator_b.parameters())
         # params_g = list(self.generator_a.parameters()) + list(self.generator_b.parameters())
@@ -83,6 +85,11 @@ class SinGAN(nn.Module):
             self.scheduler_d.step()
             self.scheduler_g.step()
 
+    def get_sigma(self, real, recon):
+        sigma = torch.sqrt(nn.MSELoss(real, recon))
+        self.sigma_pyramid.append(sigma)
+        return sigma
+
     def generate_fake_image(self, scale):  # TODO : noise_amp
         fake_image = None
         for s in range(scale + 1):
@@ -102,13 +109,12 @@ class SinGAN(nn.Module):
             if type(recon_image) != type(None):
                 recon_image = nn.Upsample((self.width_pyramid[s], self.height_pyramid[s]))(recon_image)
 
-            noise_optimal = self.noise_optimal_pyramid[s]
             generator = self.generator_pyramid[s]
+            noise_optimal = self.noise_optimal_pyramid[s]
 
             recon_image = generator(recon_image, noise_optimal)
 
         return recon_image
-
 
     def update_d(self, real, fake):
         reset_gradients([self.optimizer_d, self.optimizer_g])
@@ -140,19 +146,6 @@ class SinGAN(nn.Module):
         self.optimizer_g.step()
 
     def train_pyramid(self, scale):
-        self.scale = scale
-
-        self.real = self.real_pyramid[self.scale]
-        self.generator = self.generator_pyramid[self.scale]
-        self.discriminator = self.discriminator_pyramid[self.scale]
-        self.noise_optimal = self.noise_optimal_pyramid[self.scale]
-        # self.recon_img_upsampled = se
-
-        params_d = list(self.discriminator.parameters())
-        params_g = list(self.generator.parameters())
-        self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2), weight_decay=self.weight_decay)
-        self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2), weight_decay=self.weight_decay)
-
         # self.scheduler_d = get_scheduler(self.optimizer_d, self.config)
         # self.scheduler_g = get_scheduler(self.optimizer_g, self.config)
 
@@ -175,6 +168,33 @@ class SinGAN(nn.Module):
             self.recon = self.generate_recon_image(scale)
             self.update_g(self.real, self.fake, self.recon)
 
+    def train(self):
+        print("Start sinGAN Training")
+        for scale in range(self.config['num_scale']):
+            for step in range(self.config['n_iter']):
+                if not step:
+                    print(scale, "-" * 100)
+                    self.scale = scale
+                    self.real = self.real_pyramid[self.scale]
+                    self.generator = self.generator_pyramid[self.scale]
+                    self.discriminator = self.discriminator_pyramid[self.scale]
+                    self.noise_optimal = self.noise_optimal_pyramid[self.scale]
+
+                    params_d = list(self.discriminator.parameters())
+                    params_g = list(self.generator.parameters())
+                    self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2),
+                                                        weight_decay=self.weight_decay)
+                    self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2),
+                                                        weight_decay=self.weight_decay)
+
+                    self.recon = self.generate_recon_image(scale)
+                    self.sigma = self.get_sigma(self.real, self.recon)
+
+                self.train_pyramid(scale)
+                if not (step + 1) % 100:
+                    self.print_log(scale + 1, step + 1)
+
+
     def eval_mode_all(self):
         self.generator_a.eval()
         self.generator_b.eval()
@@ -186,8 +206,8 @@ class SinGAN(nn.Module):
         loss_d_fake = self.loss_d_fake.item()
         loss_gp = self.gradient_penalty.item()
 
-        loss_g = self.loss_recon.item()
-        loss_recon = self.loss_g.item()
+        loss_g = self.loss_g.item()
+        loss_recon = self.loss_recon.item()
 
         print(
             '[{} scale / {} step] Dis - real: {:4.2}, fake: {:4.2}, gp: {:4.2} / Gen - adv: {:4.2}, recon: {:4.2}'. \
