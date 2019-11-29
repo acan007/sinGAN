@@ -28,8 +28,9 @@ class SinGAN(nn.Module):
         num_scale = config['num_scale']
         scale_factor = config['scale_factor']
 
-        self.path_model = os.path.join(self.config['path_model_save'], self.config['save_name'])
-        self.path_sample = os.path.join(self.config['path_sample_save'], self.config['save_name'])
+        self.name = config['path_data'].split('/')[-1].split('.')[0] + "_" + config['mode']
+        self.path_model = os.path.join(config['path_model_save'], self.name)
+        self.path_sample = os.path.join(config['path_sample_save'], self.name)
 
         self.one = torch.FloatTensor([1])[0].to(self.device)
         self.mone = torch.FloatTensor([-1])[0].to(self.device)  # self.one * -1
@@ -294,7 +295,6 @@ class SinGAN(nn.Module):
                 n_cols=4, n_rows=5, padding=2
             )
             if save:
-                # save_name = "{}_scale{:02}".format(self.path_sample, 1)
-                save_name = os.path.join(self.path_sample, "scale_{:02}".format(1))
+                save_name = os.path.join(self.path_sample, "scale_{:02}".format(scale))
                 plt.imsave(save_name, save_image)
         return save_image

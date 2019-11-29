@@ -35,7 +35,9 @@ python main.py --location server
 ![](assets/sample/birds_randomsample.jpg)
 
 
-
+## TODO
+- Other task in paper - Paint to img, Editing, Harmonization, SR, Animation
+- Arbitrary aspect ratio, resolution
 
 ## Reference 
 [sinGAN](https://github.com/tamarott/SinGAN) (Author Implementation)
