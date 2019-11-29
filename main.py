@@ -5,7 +5,6 @@ from tqdm import tqdm
 import torch
 import matplotlib.pyplot as plt
 
-from _visualizer import clear_jupyter_console, save_images
 from _settings import set_dev_location, get_dataset_path, set_numpy_precision
 from _telegramer import send_text
 from _utils_torch import *

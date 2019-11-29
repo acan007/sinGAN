@@ -2,11 +2,12 @@ import cv2
 import torch
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 from torch import nn
 
 from _utils_torch import reset_gradients, reshape_batch_torch
 from _visualizer import denormalize
-from _utils_date import get_todate
+from _utils_torch import show_batch_torch
 
 from networks import Generator, Discriminator
 from utils import get_scheduler, weights_init
@@ -26,6 +27,9 @@ class SinGAN(nn.Module):
         self.weight_decay = config['weight_decay']
         num_scale = config['num_scale']
         scale_factor = config['scale_factor']
+
+        self.path_model = os.path.join(self.config['path_model_save'], self.config['save_name'])
+        self.path_sample = os.path.join(self.config['path_sample_save'], self.config['save_name'])
 
         self.one = torch.FloatTensor([1])[0].to(self.device)
         self.mone = torch.FloatTensor([-1])[0].to(self.device)  # self.one * -1
@@ -99,15 +103,18 @@ class SinGAN(nn.Module):
                 sigma = self.sigma_pyramid[s]
 
                 recon = generator(recon, noise_optimal * sigma)
-                recon = nn.Upsample((self.width_pyramid[s + 1], self.height_pyramid[s + 1]))(recon)            
-                
+                recon = nn.Upsample((self.width_pyramid[s + 1], self.height_pyramid[s + 1]))(recon)
+
             sigma = torch.sqrt(self.criterion_l2(real, recon))
-            
+
         self.sigma_pyramid.append(sigma)
-        assert len(self.sigma_pyramid) == (scale + 1) 
+        assert len(self.sigma_pyramid) == (scale + 1)
         return sigma
 
     def generate_fake_image(self, scale):  # TODO : noise_amp
+        if scale == -1:
+            scale = self.config['num_scale']  # TODO : num_scale -1 인지 체크
+
         fake_image = None
         for s in range(scale + 1):
             if type(fake_image) != type(None):
@@ -215,8 +222,9 @@ class SinGAN(nn.Module):
                     self.assign_parameters_at_scale_begin(scale)
 
                 self.train_single_scale_pyramid(scale)
-                if not (step + 1) % 200:
+                if not (step + 1) % self.config['log_iter']:
                     self.print_log(scale + 1, step + 1)
+            self.save_image = self.test_samples(scale, True)
 
     def eval_mode_all(self):
         self.generator_a.eval()
@@ -237,61 +245,58 @@ class SinGAN(nn.Module):
                 format(scale, step, loss_d_real, loss_d_fake, loss_gp, loss_g, loss_recon)
         )
 
-    def save_models(self, current_step, total_step, folder_name='models', save_name='dummy'):
-        filename = os.path.join(folder_name, save_name)
-        os.makedirs(folder_name, exist_ok=True)
+    def save_models(self, current_step):
+        os.makedirs(self.path_model, exist_ok=True)
 
         state = {
-            'dis_a': self.discriminator_a.state_dict(),
-            'dis_b': self.discriminator_b.state_dict(),
-            'gen_a': self.generator_a.state_dict(),
-            'gen_b': self.generator_b.state_dict(),
-            'optimizer_d': self.optimizer_d.state_dict(),
-            'optimizer_g': self.optimizer_g.state_dict(),
+            'generator_pyramid': self.generator_pyramid,
+            'discriminator_pyramid': self.discriminator_pyramid,
+            'noise_optimal_pyramid': self.noise_optimal_pyramid,
+            'sigma_pyramid': self.sigma_pyramid,
+            'real_pyramid': self.real_pyramid,
+            'current_scale': self.scale,
             'current_step': current_step,
-            'total_step': total_step,
+            'current_optimizer_d': self.optimizer_d.state_dict(),
+            'current_optimizer_g': self.optimizer_g.state_dict(),
         }
 
-        torch.save(state, filename)
+        # torch.save(model.generator_pyramid, './models/generator_pyramid.pth')
+        # torch.save(model.discriminator_pyramid, './models/discriminator_pyramid.pth')
+        # torch.save(model.noise_optimal_pyramid, './models/noise_optimal_pyramid.pth')
+        # torch.save(model.sigma_pyramid, './models/sigma_pyramid.pth')
+        # torch.save(model.real_pyramid, './models/real_pyramid.pth')
 
-    def load_models(self, model_path, train=True):
-        checkpoint = torch.load(model_path)
+        torch.save(state, self.path_model)
+
+    def load_models(self, train=True):
+        checkpoint = torch.load(self.path_model)
 
         # weight
-        if train:
-            self.discriminator_a.load_state_dict(checkpoint['dis_a'])
-            self.discriminator_b.load_state_dict(checkpoint['dis_b'])
-        self.generator_a.load_state_dict(checkpoint['gen_a'])
-        self.generator_b.load_state_dict(checkpoint['gen_b'])
+        self.generator_pyramid = checkpoint['generator_pyramid']
+        self.discriminator_pyramid = checkpoint['discriminator_pyramid']
+        self.noise_optimal_pyramid = checkpoint['noise_optimal_pyramid']
+        self.sigma_pyramid = checkpoint['sigma_pyramid']
+        self.real_pyramid = checkpoint['real_pyramid']
 
-        # optimizer
         if train:
-            self.optimizer_d.load_state_dict(checkpoint['optimizer_d'])
-            self.optimizer_g.load_state_dict(checkpoint['optimizer_g'])
-        return checkpoint['current_step'], checkpoint['total_step']
+            self.scale = checkpoint['current_scale']
+            current_step = checkpoint['current_step']
+            self.optimizer_d.load_state_dict(checkpoint['current_optimizer_d'])
+            self.optimizer_g.load_state_dict(checkpoint['current_optimizer_g'])
+            return current_step
+        return None
 
-    def test_samples(self, test_a, test_b, n_test_style):
+    def test_samples(self, scale, save):
+        os.makedirs(self.path_sample, exist_ok=True)
+
         self.eval_mode_all()
         with torch.no_grad():
-            repo = []
-            style_random = torch.randn(n_test_style, self.config['gen']['style_dim']).to(self.device)
-            for i in range(test_a.size(0)):
-                test_a_i = test_a[i].unsqueeze_(0)
-                test_b_i = test_b[i].unsqueeze_(0)
-
-                style_a, content_a = self.generator_a.encode(test_a_i)
-                style_b, content_b = self.generator_b.encode(test_b_i)
-
-                content_a_tile = content_a.repeat(n_test_style, 1, 1, 1)
-                content_b_tile = content_b.repeat(n_test_style, 1, 1, 1)
-
-                fake_a = self.generator_a.decode(style_random, content_b_tile)
-                recon_a = self.generator_a.decode(style_a, content_a)
-
-                fake_b = self.generator_b.decode(style_random, content_a_tile)
-                recon_b = self.generator_b.decode(style_b, content_b)
-
-                repo.append(torch.cat([test_a_i, fake_b, recon_a, test_b_i, fake_a, recon_b]))
-
-            image_saving = denormalize(reshape_batch_torch(torch.cat(repo, 2), -1, 1)[0])
-            return image_saving
+            save_image = show_batch_torch(
+                torch.cat([self.generate_fake_image(scale).clamp(-1, 1) for _ in range(20)]),
+                n_cols=4, n_rows=5, padding=2
+            )
+            if save:
+                # save_name = "{}_scale{:02}".format(self.path_sample, 1)
+                save_name = os.path.join(self.path_sample, "scale_{:02}".format(1))
+                plt.imsave(save_name, save_image)
+        return save_image
