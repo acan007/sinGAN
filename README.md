@@ -7,10 +7,10 @@
 
 ## Getting Started
 
-### Requisite
+### Prerequisite - Very Critical
 - This repository has huge dependency on my custom module, [chanye](https://github.com/bocharm/chanye). I highly recommend to `git clone` this repo and add to your `PYTHON PATH`
 - Your data should be inside of `get_dataset_path()` methods. [Reference](https://github.com/bocharm/chanye/blob/master/_settings.py)
-- `get_dataset_path()` determine the path through `os.environ()` and environment variable is set through `-- location` flag. 
+- `get_dataset_path()` determine the path through `os.environ()` and environment variable is set through `-- location` flag in `main.py`. 
 
 ### Installation
 - Clone this repo:
