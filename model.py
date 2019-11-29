@@ -227,10 +227,8 @@ class SinGAN(nn.Module):
             self.save_image = self.test_samples(scale, True)
 
     def eval_mode_all(self):
-        self.generator_a.eval()
-        self.generator_b.eval()
-        self.discriminator_a.eval()
-        self.discriminator_b.eval()
+        self.generator.eval()
+        self.discriminator.eval()
 
     def print_log(self, scale, step):
         loss_d_real = self.loss_d_real.item()

@@ -8,7 +8,9 @@
 ## Getting Started
 
 ### Requisite
-- This repository has huge dependency on my custom library, [chanye](https://github.com/bocharm/chanye). I highly recommend to `git clone` this repo and add to your `PYTHON PATH`
+- This repository has huge dependency on my custom module, [chanye](https://github.com/bocharm/chanye). I highly recommend to `git clone` this repo and add to your `PYTHON PATH`
+- Your data should be inside of `get_dataset_path()` methods. [Reference](https://github.com/bocharm/chanye/blob/master/_settings.py)
+- `get_dataset_path()` determine the path through `os.environ()` and environment variable is set through `-- location` flag. 
 
 ### Installation
 - Clone this repo:
@@ -21,7 +23,7 @@ cd sinGAN
 ### Model Training
 - Train a model:
 ```
-python main.py 
+python main.py --location server
 ```
 
 ### Datasets
@@ -29,7 +31,8 @@ python main.py
 
 ## Results of this implementation
 
-##### random_sample
+##### random_sample from *single* image
+![](assets/sample/birds_randomsample.jpg)
 
 
 
