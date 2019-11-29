@@ -23,11 +23,6 @@ def adjust_scale_factor_by_image(img, config):
     return config
 
 
-def get_resized_real_pyramids(img, opt):
-    reals = []
-    # for
-
-
 def get_scheduler(optimizer, config, iterations=-1):
     policy = config.get('lr_policy', None)
     if not policy or policy == 'constant':

@@ -17,7 +17,9 @@ class SinGAN(nn.Module):
     def __init__(self, input, config, device):
         super(SinGAN, self).__init__()
 
-        self.input = (input - 0.5) * 2
+        if np.max(input) < 10:
+            input * 255
+        self.input = input / 127.5 - 1
         self.config = config
         self.device = device
 
@@ -50,7 +52,7 @@ class SinGAN(nn.Module):
 
             processed = cv2.resize(self.input, (height_scaled, width_scaled))
             processed = torch.tensor(np.transpose(processed, [2, 0, 1])[np.newaxis])
-            self.real_pyramid.append(processed.to(self.device))
+            self.real_pyramid.append(processed.to(self.device, torch.float))
         #         self.input.to(device)
 
         self.noise_optimal_pyramid = []
@@ -64,26 +66,14 @@ class SinGAN(nn.Module):
         self.generator_pyramid, self.discriminator_pyramid = [], []
         for scale in range(num_scale):
             dim = 32 * 2 ** (scale // 4)  # increase dim by a factor of 2 every 4 scales
-            self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5))
-            self.discriminator_pyramid.append(Discriminator(input_dim=3, dim=dim, n_layers=5))
+            self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5).cuda())
+            self.discriminator_pyramid.append(Discriminator(input_dim=3, dim=dim, n_layers=5).cuda())
 
         self.sigma_pyramid = []
 
-        # TODO
-        # params_d = list(self.discriminator_a.parameters()) + list(self.discriminator_b.parameters())
-        # params_g = list(self.generator_a.parameters()) + list(self.generator_b.parameters())
-        # self.optimizer_d = torch.optim.Adam(params_d, lr, (beta1, beta2), weight_decay=weight_decay)
-        # self.optimizer_g = torch.optim.Adam(params_g, lr, (beta1, beta2), weight_decay=weight_decay)
+        self.assign_network_at_scale_begin(0)
 
-        # self.scheduler_d = get_scheduler(self.optimizer_d, config)
-        # self.scheduler_g = get_scheduler(self.optimizer_g, config)
-        #
-        # self.apply(weights_init(config['init']))
-        # self.discriminator_a.apply(weights_init('gaussian'))
-        # self.discriminator_b.apply(weights_init('gaussian'))
-        #
         self.criterion_l2 = nn.MSELoss()
-        # self.criterion_l2 = nn.MSELoss()
 
         self.to(device)
 
@@ -173,8 +163,8 @@ class SinGAN(nn.Module):
         self.optimizer_g.step()
 
     def assign_network_at_scale_begin(self, scale):
-        self.generator = self.generator_pyramid[scale].cuda()
-        self.discriminator = self.discriminator_pyramid[scale].cuda()
+        self.generator = self.generator_pyramid[scale]
+        self.discriminator = self.discriminator_pyramid[scale]
         self.noise_optimal = self.noise_optimal_pyramid[scale]
 
         params_d = list(self.discriminator.parameters())
@@ -225,7 +215,11 @@ class SinGAN(nn.Module):
                 self.train_single_scale_pyramid(scale)
                 if not (step + 1) % self.config['log_iter']:
                     self.print_log(scale + 1, step + 1)
+
             self.save_image = self.test_samples(scale, True)
+            self.save_models()
+
+        print("sinGAN Training Finished")
 
     def eval_mode_all(self):
         self.generator.eval()
@@ -244,7 +238,7 @@ class SinGAN(nn.Module):
                 format(scale, step, loss_d_real, loss_d_fake, loss_gp, loss_g, loss_recon)
         )
 
-    def save_models(self, current_step):
+    def save_models(self):
         os.makedirs(self.path_model, exist_ok=True)
 
         state = {
@@ -254,21 +248,16 @@ class SinGAN(nn.Module):
             'sigma_pyramid': self.sigma_pyramid,
             'real_pyramid': self.real_pyramid,
             'current_scale': self.scale,
-            'current_step': current_step,
             'current_optimizer_d': self.optimizer_d.state_dict(),
             'current_optimizer_g': self.optimizer_g.state_dict(),
         }
 
-        # torch.save(model.generator_pyramid, './models/generator_pyramid.pth')
-        # torch.save(model.discriminator_pyramid, './models/discriminator_pyramid.pth')
-        # torch.save(model.noise_optimal_pyramid, './models/noise_optimal_pyramid.pth')
-        # torch.save(model.sigma_pyramid, './models/sigma_pyramid.pth')
-        # torch.save(model.real_pyramid, './models/real_pyramid.pth')
+        save_name = os.path.join(self.path_model, "scale_{:02}".format(self.scale))
+        torch.save(state, save_name)
 
-        torch.save(state, self.path_model)
-
-    def load_models(self, train=True):
-        checkpoint = torch.load(self.path_model)
+    def load_models(self, scale, train=True):
+        save_name = os.path.join(self.path_model, "scale_{:02}".format(scale))
+        checkpoint = torch.load(save_name)
 
         # weight
         self.generator_pyramid = checkpoint['generator_pyramid']
@@ -276,14 +265,11 @@ class SinGAN(nn.Module):
         self.noise_optimal_pyramid = checkpoint['noise_optimal_pyramid']
         self.sigma_pyramid = checkpoint['sigma_pyramid']
         self.real_pyramid = checkpoint['real_pyramid']
+        self.scale = checkpoint['current_scale']
 
         if train:
-            self.scale = checkpoint['current_scale']
-            current_step = checkpoint['current_step']
             self.optimizer_d.load_state_dict(checkpoint['current_optimizer_d'])
             self.optimizer_g.load_state_dict(checkpoint['current_optimizer_g'])
-            return current_step
-        return None
 
     def test_samples(self, scale, save):
         os.makedirs(self.path_sample, exist_ok=True)
