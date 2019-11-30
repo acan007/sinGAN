@@ -32,10 +32,9 @@ def main(config, location, resume, telegram):
         print("ERROR!! You should put input sample according to `get_dataset_path()`")
         sys.exit()
 
-    config = adjust_scale_factor_by_image(input, config)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # model
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = SinGAN(input, config, device)
     # TODO
     # if load_path:

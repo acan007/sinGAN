@@ -11,12 +11,17 @@ def get_config(path):
         return yaml.load(stream, Loader=yaml.SafeLoader)
 
 
-def adjust_scale_factor_by_image(img, config):
-    idx_dim = np.argsort(img.shape)[::-1][:2]
-    min_dim = min(img.shape[idx_dim[0]], img.shape[idx_dim[1]])
+def adjust_scale_factor_by_image(img_shape, config):
+    idx_dim = np.argsort(img_shape)[::-1][:2]
+    min_dim = min(img_shape[idx_dim[0]], img_shape[idx_dim[1]])
 
-    num_scale = int(np.ceil(np.log(min_dim / config['coarsest_dim']) / np.log(config['scale_factor_init'])))
-    scale_factor = np.power(min_dim / config['coarsest_dim'], 1 / num_scale)
+    if config['mode'] != 'SR':
+        num_scale = int(np.ceil(np.log(min_dim / config['coarsest_dim']) / np.log(config['scale_factor_init'])))
+        scale_factor = np.power(min_dim / config['coarsest_dim'], 1 / num_scale)
+    else:
+        scale_factor = math.pow(1 / 2, 1 / 3)
+        num_scale = round(math.log(1 / config['sr_factor'], scale_factor))
+        scale_factor = pow(config['sr_factor'], 1 / num_scale)
 
     config['num_scale'] = num_scale
     config['scale_factor'] = scale_factor
