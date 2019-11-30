@@ -2,8 +2,11 @@
 /models/
 *.ipynb_checkpoints*
 .idea*
+*.ipynb
 *.h5
 *.npy
 *.xml
 *.pyc
 *.DS_Store
+
+results/

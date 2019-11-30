@@ -1,0 +1,51 @@
+# logger options
+image_display_iter: 500       # How often do you want to display output images during training
+image_save_iter: 10000        # How often do you want to save output images during training
+model_save_iter: 100000       # How often do you want to save models during training
+log_iter: 200                 # How often do you want to log the training stats
+
+# optimization options
+n_iter: 2000                  # number of training iterations for scale
+batch_size: 1                 # batch size
+weight_decay: 0.0001          # weight decay
+beta1: 0.5                    # Adam parameter
+beta2: 0.999                  # Adam parameter
+init: kaiming                 # initialization [gaussian/kaiming/xavier/orthogonal]
+lr: 0.0005                    # initial learning rate
+lr_policy: step               # learning rate scheduler
+g_step: 3                     # generator inner steps
+d_step: 3                     # discriminator inner steps
+step_size: 100000             # how often to decay learning rate
+gamma: 0.5                    # how much to decay learning rate
+w_recon: 10               # weight of sample reconstruction loss
+w_gp: 0.1
+
+# model options
+coarsest_dim: 25
+finest_dim: 250
+scale_factor_init: 1.333
+gen:
+  dim: 32                     # number of filters in the bottommost layer
+  norm: bn                     # norm
+  activ: lrelu                 # activation function [relu/lrelu/prelu/selu/tanh]
+  n_layer: 5             # number of downsampling layers in content encoder
+dis:
+  dim: 32                     # number of filters in the bottommost layer
+  norm: bn                    # normalization layer [none/bn/in/ln]
+  activ: lrelu                # activation function [relu/lrelu/prelu/selu/tanh]
+  n_layer: 5                  # number of layers in D
+  gan_type: wgan             # GAN loss [lsgan/nsgan]
+
+# data options
+input_dim_a: 3                                    # number of sample channels [1/3]
+num_workers: 8                                    # number of data loading threads
+split: False                                      # whether splitting images when reading images
+crop: False                                       # whether cropping images when reading images
+flip: False                                       # whether horizontally flipping images when reading images
+crop_image_height: False                            # random crop sample of this height
+crop_image_width: False                             # random crop sample of this width
+path_data_base: /Users/bochan/_datasets  # path of source data base
+path_data: sinGAN/Images/cows.png              # path of source data
+path_sample_save: results/samples       # path of sample saving
+path_model_save: results/models      # path of model saving
+mode: paint2image                  #

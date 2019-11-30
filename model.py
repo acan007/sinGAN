@@ -24,27 +24,27 @@ class SinGAN(nn.Module):
         self.config = adjust_scale_factor_by_image(input.shape, config)  # TODO : static method?
         self.device = device
 
-        self.lr = config['lr']
-        self.beta1 = config['beta1']
-        self.beta2 = config['beta2']
-        self.weight_decay = config['weight_decay']
-        self.mode = config['mode']
-        num_scale = config['num_scale']
-        scale_factor = config['scale_factor']
+        self.lr = self.config['lr']
+        self.beta1 = self.config['beta1']
+        self.beta2 = self.config['beta2']
+        self.weight_decay = self.config['weight_decay']
+        self.mode = self.config['mode']
+        num_scale = self.config['num_scale']
+        scale_factor = self.config['scale_factor']
 
-        self.name = config['path_data'].split('/')[-1].split('.')[0] + "_" + config['mode']
-        self.path_model = os.path.join(config['path_model_save'], self.name)
-        self.path_sample = os.path.join(config['path_sample_save'], self.name)
+        self.name = self.config['path_data'].split('/')[-1].split('.')[0] + "_" + self.config['mode']
+        self.path_model = os.path.join(self.config['path_model_save'], self.name)
+        self.path_sample = os.path.join(self.config['path_sample_save'], self.name)
 
         self.one = torch.FloatTensor([1])[0].to(self.device)
         self.mone = torch.FloatTensor([-1])[0].to(self.device)  # self.one * -1
-        self.w_recon = config['w_recon']
-        self.w_gp = config['w_gp']
+        self.w_recon = self.config['w_recon']
+        self.w_gp = self.config['w_gp']
 
         width, height, _ = self.input.shape
         self.height_pyramid, self.width_pyramid, self.real_pyramid = [], [], []
-        for i in range(num_scale, -1, -1):
-            multiplier = (1 / scale_factor) ** i
+        for scale in range(num_scale -1, -1, -1):
+            multiplier = (1 / scale_factor) ** scale
 
             height_scaled = int(round(height * multiplier))
             width_scaled = int(round(width * multiplier))
@@ -68,8 +68,12 @@ class SinGAN(nn.Module):
         self.generator_pyramid, self.discriminator_pyramid = [], []
         for scale in range(num_scale):
             dim = 32 * 2 ** (scale // 4)  # increase dim by a factor of 2 every 4 scales
-            self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5).cuda())
-            self.discriminator_pyramid.append(Discriminator(input_dim=3, dim=dim, n_layers=5).cuda())
+            if self.device.type == 'cuda':
+                self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5).cuda())
+                self.discriminator_pyramid.append(Discriminator(input_dim=3, dim=dim, n_layers=5).cuda())
+            else:
+                self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5))
+                self.discriminator_pyramid.append(Discriminator(input_dim=3, dim=dim, n_layers=5))
 
         self.sigma_pyramid = []
 
@@ -113,7 +117,7 @@ class SinGAN(nn.Module):
             sigma = self.sigma_pyramid[s]
 
             fake_image = generator(fake_image, noise * sigma)
-
+            
         return fake_image
 
     def generate_recon_image(self, scale):
@@ -281,7 +285,7 @@ class SinGAN(nn.Module):
         with torch.no_grad():
             save_image = show_batch_torch(
                 torch.cat([self.generate_fake_image(scale).clamp(-1, 1) for _ in range(20)]),
-                n_cols=4, n_rows=5, padding=2
+                n_cols=4, n_rows=5, padding=2, return_img=True
             )
             if save:
                 save_name = os.path.join(self.path_sample, "scale_{:02}".format(scale))

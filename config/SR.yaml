@@ -46,7 +46,7 @@ flip: False                                       # whether horizontally flippin
 crop_image_height: False                            # random crop sample of this height
 crop_image_width: False                             # random crop sample of this width
 path_data_base: /Users/bochan/_datasets  # path of source data base
-path_data: sinGAN/Images/birds.png              # path of source data
+path_data: sinGAN/Images/mountains3.png              # path of source data
 path_sample_save: results/samples       # path of sample saving
 path_model_save: results/models      # path of model saving
 mode: SR                  #

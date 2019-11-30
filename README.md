@@ -31,8 +31,37 @@ python main.py --location server
 
 ## Results of this implementation
 
-##### random_sample from *single* image
-![](assets/sample/birds_randomsample.jpg)
+#### Random samples
+- Train Image
+
+![](assets/inputs/birds.png)
+- Model Output (Random Sampled)
+
+![](assets/samples/birds_randomsample.jpg)
+
+#### paint to image
+- Train Image 
+
+![](assets/inputs/cows.png)
+
+![](assets/inputs/cows_naive.png)
+
+- Model Output (image order : from coarsest scale to finest scale)
+
+![](assets/samples/cows_paint2image.png)
+
+#### Harmonization
+- Train Image 
+
+![](assets/inputs/starry_night.png)
+
+- Naive Image
+
+![](assets/inputs/starry_night_naive.png)
+
+- Model Output (image order : from coarsest scale to finest scale)
+
+![](assets/samples/starry_night_harmonization.png)
 
 
 ## TODO
