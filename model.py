@@ -1,3 +1,5 @@
+import math
+
 import cv2
 import torch
 import os
@@ -5,45 +7,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch import nn
 
-from chanye._utils_torch import reset_gradients
-from chanye._utils_torch import show_batch_torch
+from chanye._utils_torch import reset_gradients, reshape_batch_torch
 
 from networks import Generator, Discriminator
-from utils import adjust_scale_factor_by_image, get_scheduler, weights_init
+from utils import get_scheduler, weights_init, normalize_image
 
 
 class SinGAN(nn.Module):
-    def __init__(self, input, config, device):
+    def __init__(self, config, dataset_path):
         super(SinGAN, self).__init__()
 
-        if np.max(input) < 10:
-            input = input * 255
-        self.input = input / 127.5 - 1
+        # --- member variables
+        self.config = config
+        self.dataset_path = dataset_path
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.config = adjust_scale_factor_by_image(input.shape, config)  # TODO : static method?
-        self.device = device
+        input = plt.imread(os.path.join(dataset_path, config['path_data']))
+        self.input = normalize_image(input)
+        self.adjust_scale_factor_by_image()
 
-        self.lr = self.config['lr']
-        self.beta1 = self.config['beta1']
-        self.beta2 = self.config['beta2']
-        self.weight_decay = self.config['weight_decay']
-        self.mode = self.config['mode']
-        num_scale = self.config['num_scale']
-        scale_factor = self.config['scale_factor']
+        self.lr = config['lr']
+        self.beta1 = config['beta1']
+        self.beta2 = config['beta2']
+        self.weight_decay = config['weight_decay']
+        self.num_scale = self.config['num_scale']
+        self.scale_factor = self.config['scale_factor']
 
-        self.name = self.config['path_data'].split('/')[-1].split('.')[0] + "_" + self.config['mode']
-        self.path_model = os.path.join(self.config['path_model_save'], self.name)
-        self.path_sample = os.path.join(self.config['path_sample_save'], self.name)
+        self.name = config['path_data'].split('/')[-1].split('.')[0] + "_" + config['mode']
+        self.path_model = os.path.join(config['path_model_save'], self.name)
+        self.path_sample = os.path.join(config['path_sample_save'], self.name)
 
         self.one = torch.FloatTensor([1])[0].to(self.device)
         self.mone = torch.FloatTensor([-1])[0].to(self.device)  # self.one * -1
         self.w_recon = self.config['w_recon']
         self.w_gp = self.config['w_gp']
 
+        # --- pyramids
         width, height, _ = self.input.shape
         self.height_pyramid, self.width_pyramid, self.real_pyramid = [], [], []
-        for scale in range(num_scale - 1, -1, -1):
-            multiplier = (1 / scale_factor) ** scale
+        for scale in range(self.num_scale - 1, -1, -1):
+            multiplier = (1 / self.scale_factor) ** scale
 
             height_scaled = int(round(height * multiplier))
             width_scaled = int(round(width * multiplier))
@@ -54,10 +57,9 @@ class SinGAN(nn.Module):
             processed = cv2.resize(self.input, (height_scaled, width_scaled))
             processed = torch.tensor(np.transpose(processed, [2, 0, 1])[np.newaxis])
             self.real_pyramid.append(processed.to(self.device, torch.float))
-        #         self.input.to(device)
 
         self.noise_optimal_pyramid = []
-        for scale in range(num_scale):
+        for scale in range(self.num_scale):
             if not scale:
                 noise = torch.randn_like(self.real_pyramid[scale]).to(self.device)
             else:
@@ -65,7 +67,7 @@ class SinGAN(nn.Module):
             self.noise_optimal_pyramid.append(noise)
 
         self.generator_pyramid, self.discriminator_pyramid = [], []
-        for scale in range(num_scale):
+        for scale in range(self.num_scale):
             dim = 32 * 2 ** (scale // 4)  # increase dim by a factor of 2 every 4 scales
             if self.device.type == 'cuda':
                 self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5).cuda())
@@ -75,12 +77,21 @@ class SinGAN(nn.Module):
                 self.discriminator_pyramid.append(Discriminator(input_dim=3, dim=dim, n_layers=5))
 
         self.sigma_pyramid = []
-
         self.assign_network_at_scale_begin(0)
 
         self.criterion_l2 = nn.MSELoss()
-
         self.to(device)
+
+    def adjust_scale_factor_by_image(self):
+        img_shape = self.input.shape
+        idx_dim = np.argsort(img_shape)[::-1][:2]
+        min_dim = min(img_shape[idx_dim[0]], img_shape[idx_dim[1]])
+
+        num_scale = int(np.ceil(np.log(min_dim / self.config['coarsest_dim']) / np.log(self.config['scale_factor_init'])))
+        scale_factor = np.power(min_dim / self.config['coarsest_dim'], 1 / num_scale)
+
+        self.config['num_scale'] = num_scale
+        self.config['scale_factor'] = scale_factor
 
     def get_sigma(self, scale, real):
         if not scale:
@@ -104,7 +115,7 @@ class SinGAN(nn.Module):
 
     def generate_fake_image(self, scale):
         if scale == -1:
-            scale = self.config['num_scale'] - 1
+            scale = self.num_scale - 1
 
         fake_image = None
         for s in range(scale + 1):
@@ -121,7 +132,7 @@ class SinGAN(nn.Module):
 
     def generate_recon_image(self, scale):
         if scale == -1:
-            scale = self.config['num_scale'] - 1
+            scale = self.num_scale - 1
 
         recon_image = None
         for s in range(scale + 1):
@@ -163,30 +174,30 @@ class SinGAN(nn.Module):
         self.real = self.real_pyramid[scale]
         self.sigma = self.get_sigma(scale, self.real)
 
-    def update_d(self, real, fake):
+    def update_d(self):
         reset_gradients([self.optimizer_d, self.optimizer_g])
 
-        logit_real = self.discriminator(real)
+        logit_real = self.discriminator(self.real)
         self.loss_d_real = logit_real.mean()
         self.loss_d_real.backward(self.mone)
 
-        logit_fake = self.discriminator(fake.detach())
+        logit_fake = self.discriminator(self.fake.detach())
         self.loss_d_fake = logit_fake.mean()
         self.loss_d_fake.backward(self.one)
 
-        self.gradient_penalty = self.discriminator.calculate_gradient_penalty(real, fake, self.device) * self.w_gp
+        self.gradient_penalty = self.discriminator.calculate_gradient_penalty(self.real, self.fake,
+                                                                              self.device) * self.w_gp
         self.gradient_penalty.backward()
 
         self.optimizer_d.step()
 
-    def update_g(self, real, fake, recon):
+    def update_g(self):
         reset_gradients([self.optimizer_d, self.optimizer_g])
 
-        # TODO : real을 upsampled 된 애로 바꾸자
-        self.loss_recon = self.criterion_l2(recon, real) * self.w_recon
+        self.loss_recon = self.criterion_l2(self.recon, self.real) * self.w_recon
         self.loss_recon.backward()
 
-        logit_g = self.discriminator(fake)
+        logit_g = self.discriminator(self.fake)
         self.loss_g = logit_g.mean()
         self.loss_g.backward(self.mone)
 
@@ -199,16 +210,16 @@ class SinGAN(nn.Module):
         # --- forward and back prob
         for step in range(self.config['d_step']):
             self.fake = self.generate_fake_image(scale)
-            self.update_d(self.real, self.fake)
+            self.update_d()
 
         for step in range(self.config['g_step']):
             self.fake = self.generate_fake_image(scale)
             self.recon = self.generate_recon_image(scale)
-            self.update_g(self.real, self.fake, self.recon)
+            self.update_g()
 
     def train(self):
-        print("Start sinGAN Training - {}, {} scales".format(self.name, self.config['num_scale']))
-        for scale in range(self.config['num_scale']):
+        print("Start sinGAN Training - {}, {} scales".format(self.name, self.num_scale))
+        for scale in range(self.num_scale):
             for step in range(self.config['n_iter']):
                 if not step:
                     print("scale", scale + 1, "-" * 100)
@@ -219,7 +230,7 @@ class SinGAN(nn.Module):
                 if not (step + 1) % self.config['log_iter']:
                     self.print_log(scale + 1, step + 1)
 
-            self.save_image = self.test_samples(scale, save=True)
+            self.save_image = self.test_samples_scale(scale, save=True)
             self.save_models(scale)
 
         print("sinGAN Training Finished")
@@ -260,7 +271,7 @@ class SinGAN(nn.Module):
 
     def load_models(self, scale, train=True):
         if scale == -1:
-            scale = self.config['num_scale'] - 1
+            scale = self.num_scale - 1
 
         save_name = os.path.join(self.path_model, "scale_{:02}".format(scale))
         checkpoint = torch.load(save_name)
@@ -277,16 +288,20 @@ class SinGAN(nn.Module):
             self.optimizer_d.load_state_dict(checkpoint['current_optimizer_d'])
             self.optimizer_g.load_state_dict(checkpoint['current_optimizer_g'])
 
-    def test_samples(self, scale, save):
+    def test_samples_scale(self, scale, save):
         os.makedirs(self.path_sample, exist_ok=True)
 
         self.eval_mode_all()
         with torch.no_grad():
-            save_image = show_batch_torch(
+            save_image = reshape_batch_torch(
                 torch.cat([self.generate_fake_image(scale).clamp(-1, 1) for _ in range(20)]),
-                n_cols=4, n_rows=5, padding=2, return_img=True
+                n_cols=4, n_rows=5, padding=2
             )
             if save:
                 save_name = os.path.join(self.path_sample, "scale_{:02}".format(scale))
                 plt.imsave(save_name, save_image)
+                print("Result Saved:" + save_name)
         return save_image
+
+    def test_samples(self, save):
+        return self.test_samples_scale(-1, save)

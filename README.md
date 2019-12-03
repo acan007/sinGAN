@@ -7,10 +7,8 @@
 
 ## Getting Started
 
-### Prerequisite - Very Critical
-- This repository has huge dependency on my custom module, [chanye](https://github.com/bocharm/chanye). I highly recommend to `git clone` this repo and add to your `PYTHON PATH`
-- Your data should be inside of `get_dataset_path()` methods. [Reference](https://github.com/bocharm/chanye/blob/master/_settings.py)
-- `get_dataset_path()` determine the path through `os.environ()` and environment variable is set through `-- location` flag in `main.py`. 
+### Prerequisite
+ 
 
 ### Installation
 - Clone this repo:
@@ -26,15 +24,13 @@ cd sinGAN
 python main.py --location server
 ```
 
-### Datasets
-
 
 ## Results of this implementation
 
 #### Random samples
 - Train Image
 
-![](assets/inputs/birds.png)
+![](assets/Input/Images/birds.png)
 - Model Output (Random Sampled)
 
 ![](assets/samples/birds_randomsample.jpg)
@@ -42,9 +38,11 @@ python main.py --location server
 #### paint to image
 - Train Image 
 
-![](assets/inputs/cows.png)
+![](assets/Input/Images/cows.png)
 
-![](assets/inputs/cows_naive.png)
+- Naive Image
+
+![](assets/Input/Paint/cows.png)
 
 - Model Output (image order : from coarsest scale to finest scale)
 
@@ -53,11 +51,11 @@ python main.py --location server
 #### Harmonization
 - Train Image 
 
-![](assets/inputs/starry_night.png)
+![](assets/Input/Images/starry_night.png)
 
 - Naive Image
 
-![](assets/inputs/starry_night_naive.png)
+![](assets/Input/Harmonization/starry_night_naive.png)
 
 - Model Output (image order : from coarsest scale to finest scale)
 
@@ -66,11 +64,11 @@ python main.py --location server
 #### Editing
 - Train Image 
 
-![](assets/inputs/stone.png)
+![](assets/Input/Images/stone.png)
 
 - Naive Image
 
-![](assets/inputs/stone_edit.png)
+![](assets/Input/Editing/stone_edit.png)
 
 - Model Output (image order : from coarsest scale to finest scale)
 

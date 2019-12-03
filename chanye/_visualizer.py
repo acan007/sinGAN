@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 from IPython.display import clear_output
 
 
+# jpg : 0 ~ 255, # png: 0 ~ 1
 def normalize(img, mode='tanh'):
     assert not (np.max(img) > 1.5 and np.min(img) < -1.5)
+    if np.max(img) < 1.5:  # png
+        img = img * 255.
+
     if mode == 'tanh':
         img = np.array(img) / 127.5 - 1
     elif mode == 'sigmoid':
