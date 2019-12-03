@@ -11,13 +11,6 @@ from harmonization import Harmonization
 from editing import Editing
 from super_resolution import SuperResolution
 
-"""
-1. super_resolution 에서 train()하게
-2. 나머지는 model 에서 train() 하고 인퍼런스만 딴데서
-3. 
-"""
-
-
 @click.command()
 @click.option('--config', type=str, default='./config/random_sample.yaml', help='Path to the config file.')
 @click.option('--mode', type=str, required=True,

@@ -1,9 +1,8 @@
-import math
-
 import cv2
 import torch
 import os
 import numpy as np
+import glob
 import matplotlib.pyplot as plt
 from torch import nn
 
@@ -29,7 +28,7 @@ class SinGAN(nn.Module):
         self.lr = config['lr']
         self.beta1 = config['beta1']
         self.beta2 = config['beta2']
-#         self.weight_decay = config['weight_decay']
+        #         self.weight_decay = config['weight_decay']
         self.num_scale = self.config['num_scale']
         self.scale_factor = self.config['scale_factor']
 
@@ -87,7 +86,8 @@ class SinGAN(nn.Module):
         idx_dim = np.argsort(img_shape)[::-1][:2]
         min_dim = min(img_shape[idx_dim[0]], img_shape[idx_dim[1]])
 
-        num_scale = int(np.ceil(np.log(min_dim / self.config['coarsest_dim']) / np.log(self.config['scale_factor_init'])))
+        num_scale = int(
+            np.ceil(np.log(min_dim / self.config['coarsest_dim']) / np.log(self.config['scale_factor_init'])))
         scale_factor = np.power(min_dim / self.config['coarsest_dim'], 1 / num_scale)
 
         self.config['num_scale'] = num_scale
@@ -215,9 +215,9 @@ class SinGAN(nn.Module):
             self.recon = self.generate_recon_image(scale)
             self.update_g()
 
-    def train(self):
+    def train(self, init_scale=0):
         print("Start sinGAN Training - {}, {} scales".format(self.name, self.num_scale))
-        for scale in range(self.num_scale):
+        for scale in range(init_scale, self.num_scale):
             for step in range(self.config['n_iter']):
                 if not step:
                     print("scale", scale + 1, "-" * 100)
@@ -285,6 +285,15 @@ class SinGAN(nn.Module):
         if train:
             self.optimizer_d.load_state_dict(checkpoint['current_optimizer_d'])
             self.optimizer_g.load_state_dict(checkpoint['current_optimizer_g'])
+
+    def resume_train(self, scale=False):
+        if not scale:
+            last_model_path = sorted(glob.glob(os.path.join(self.path_model, '*')))[-1]
+            scale = int(last_model_path.split('/')[-1][-2:])
+
+        self.load_models(scale, True)
+        print("Resume Training - scale: ", scale)
+        self.train(scale)
 
     def test_samples_scale(self, scale, save):
         os.makedirs(self.path_sample, exist_ok=True)

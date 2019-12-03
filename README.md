@@ -100,6 +100,14 @@ python test.py --config ./config/editing.yaml --mode editing
 
 ![](assets/samples/stone_editing.png)
 
+#### Super Resolution
+- Train Image 
+
+![](assets/Input/Images/mountains3.png)
+
+- Model Output
+
+![](assets/samples/mountain3_SR.png)
 
 ## TODO
 - inference for arbitrary aspect ratio, resolution
