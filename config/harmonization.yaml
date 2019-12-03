@@ -29,9 +29,9 @@ dis:
   n_layer: 5                   # number of layers in each discriminator block
 
 # data options
-path_data: Images/starry_night.png                           # path of source image
-path_naive_data: Harmonization/starry_night_naive.png        # path for naive data
-path_mask_data: Harmonization/starry_night_naive_mask.png    # path for mask data
+path_data: Images/starry_night.png                                  # path of source image
+path_naive_data: Harmonization/starry_night_naive.png               # path for naive data
+path_mask_data: Harmonization/starry_night_naive_mask.png           # path for mask data
 path_sample_save: results/samples                                   # path of sample saving
 path_model_save: results/models                                     # path of model saving
 mode: harmonization                                                 # prefix for save path

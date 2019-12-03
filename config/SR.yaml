@@ -27,7 +27,7 @@ dis:
   n_layer: 5                   # number of layers in each discriminator block
 
 # data options
-path_data: Images/mountains3.png        # path of source data
+path_data: Images/mountains3.png               # path of source data
 path_sample_save: results/samples              # path of sample saving
 path_model_save: results/models                # path of model saving
 mode: SR                                       # prefix for save path
