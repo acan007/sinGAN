@@ -7,10 +7,9 @@ from tqdm import tqdm
 import torch
 import matplotlib.pyplot as plt
 
-from _settings import set_dev_location, get_dataset_path, set_numpy_precision
-import _telegramer as telegramer
+from chanye._settings import set_dev_location, get_dataset_path, set_numpy_precision, seed_random
 
-from utils import get_config, adjust_scale_factor_by_image
+from utils import get_config
 from model import SinGAN
 
 
@@ -18,10 +17,10 @@ from model import SinGAN
 @click.option('--config', type=str, default='./config/random_sample.yaml', help='Path to the config file.')
 @click.option('--location', type=str, required=True, help='dev env [macbook | server | home]')
 @click.option('--resume', default=False, help='whether resume and train')
-@click.option('--telegram', default=False, help='whether alert the end of training through Telegram message')
-def main(config, location, resume, telegram):
-    set_dev_location(location)
+def main(config, location, resume):
+    seed_random()
     set_numpy_precision()
+    set_dev_location(location)
 
     config = get_config(config)
 
@@ -42,10 +41,6 @@ def main(config, location, resume, telegram):
 
     # train
     model.train()
-
-    # alert the end of training through Telegram message
-    if telegram:
-        telegramer.send_text('sinGAN LEARNING FINISHED', "@bonny_test")
 
 
 if __name__ == '__main__':

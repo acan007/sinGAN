@@ -3,7 +3,7 @@ from torch import nn
 from torch import autograd
 from torch.autograd import Variable
 
-from _layers import LinearBlock, Conv2dBlock, ResBlock
+from chanye._layers import Conv2dBlock
 
 from utils import get_config
 

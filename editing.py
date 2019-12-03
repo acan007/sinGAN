@@ -10,15 +10,13 @@ from chanye._utils_torch import show_torch, show_batch_torch
 from model import SinGAN
 
 
-class Harmonization(SinGAN):
-    def __init__(self, naive_img, mask, input, config, device):
+class Editing(SinGAN):
+    def __init__(self, naive_img, input, config, device):
         super().__init__(input, config, device)
 
         if np.max(naive_img) < 10:
             naive_img = naive_img * 255
         self.naive_img = naive_img / 127.5 - 1
-        #         self.naive_img = torch.tensor(np.transpose(self.naive_img, [2, 0, 1])[np.newaxis]).to(self.device, torch.float)
-        self.mask = torch.tensor(np.transpose(mask, [2, 0, 1])).to(self.device, torch.float)  # [np.newaxis])
 
         self.naive_pyramid = []
         for i in range(self.config['num_scale']):
@@ -29,11 +27,11 @@ class Harmonization(SinGAN):
             processed = torch.tensor(np.transpose(processed, [2, 0, 1])[np.newaxis])
             self.naive_pyramid.append(processed.to(self.device, torch.float))
 
-    def generate_harmonization(self, init_scale):
+    def generate_editing(self, init_scale):
         if init_scale == -1:
             init_scale = self.config['num_scale'] - 1
 
-        self.harmonization_pyramid = []  # just for enjoy
+        self.editing_pyramid = []  # just for enjoy
         for scale in range(init_scale, self.config['num_scale']):
             generator = self.generator_pyramid[scale]
             noise_optimal = self.noise_optimal_pyramid[scale]
@@ -41,16 +39,14 @@ class Harmonization(SinGAN):
 
             if scale == init_scale:
                 naive = self.naive_pyramid[init_scale]
-                harmonization = generator(naive, noise_optimal * sigma)
+                editing = generator(naive, noise_optimal * sigma)
 
             else:
-                harmonization = nn.Upsample((self.width_pyramid[scale], self.height_pyramid[scale]))(harmonization)
-                harmonization = generator(harmonization, noise_optimal * sigma)
+                editing = nn.Upsample((self.width_pyramid[scale], self.height_pyramid[scale]))(editing)
+                editing = generator(editing, noise_optimal * sigma)
 
-            self.harmonization_pyramid.append(harmonization)
-
-        harmonization = self.mask * harmonization + (1 - self.mask) * self.naive_pyramid[-1]
-        return harmonization
+            self.editing_pyramid.append(editing)
+        return editing
 
     def sample_scales(self, save):
         os.makedirs(self.path_sample, exist_ok=True)
@@ -63,18 +59,16 @@ class Harmonization(SinGAN):
 
                 save_image = show_batch_torch(
                     torch.cat(
-                        [self.generate_harmonization(scale).clamp(-1, 1) for scale in range(self.config['num_scale'])]),
+                        [self.generate_editing(scale).clamp(-1, 1) for scale in range(self.config['num_scale'])]),
                     padding=2, n_rows=n_rows, n_cols=n_cols, return_img=True
                 )
-
             else:
-                harmonizations = [self.generate_harmonization(scale).clamp(-1, 1) for scale in
-                                  range(self.config['num_scale'])]
-                harmonizations += [torch.zeros_like(harmonizations[0])]
+                editings = [self.generate_editing(scale).clamp(-1, 1) for scale in
+                                range(self.config['num_scale'])]
+                editings += [torch.zeros_like(editings[0])]
                 save_image = show_batch_torch(
-                    torch.cat(harmonizations), n_rows=2, n_cols=-1, return_img=True
+                    torch.cat(editings), n_rows=2, n_cols=-1, return_img=True
                 )
-
             if save:
                 save_name = os.path.join(self.path_sample, "sample_scales")
                 plt.imsave(save_name, save_image)

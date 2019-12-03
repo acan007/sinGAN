@@ -63,6 +63,19 @@ python main.py --location server
 
 ![](assets/samples/starry_night_harmonization.png)
 
+#### Editing
+- Train Image 
+
+![](assets/inputs/stone.png)
+
+- Naive Image
+
+![](assets/inputs/stone_edit.png)
+
+- Model Output (image order : from coarsest scale to finest scale)
+
+![](assets/samples/stone_editing.png)
+
 
 ## TODO
 - Other task in paper - Paint to img, Editing, Harmonization, SR, Animation

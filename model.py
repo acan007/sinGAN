@@ -5,9 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch import nn
 
-from _utils_torch import reset_gradients, reshape_batch_torch
-from _visualizer import denormalize
-from _utils_torch import show_batch_torch
+from chanye._utils_torch import reset_gradients
+from chanye._utils_torch import show_batch_torch
 
 from networks import Generator, Discriminator
 from utils import adjust_scale_factor_by_image, get_scheduler, weights_init
@@ -43,7 +42,7 @@ class SinGAN(nn.Module):
 
         width, height, _ = self.input.shape
         self.height_pyramid, self.width_pyramid, self.real_pyramid = [], [], []
-        for scale in range(num_scale -1, -1, -1):
+        for scale in range(num_scale - 1, -1, -1):
             multiplier = (1 / scale_factor) ** scale
 
             height_scaled = int(round(height * multiplier))
@@ -117,7 +116,7 @@ class SinGAN(nn.Module):
             sigma = self.sigma_pyramid[s]
 
             fake_image = generator(fake_image, noise * sigma)
-            
+
         return fake_image
 
     def generate_recon_image(self, scale):

@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch import nn
 
-from _utils_torch import show_torch, show_batch_torch
+from chanye._utils_torch import show_torch, show_batch_torch
 
 from model import SinGAN
 
@@ -30,7 +30,7 @@ class Paint2Image(SinGAN):
     def generate_paint2image(self, init_scale):
         if init_scale == -1:
             init_scale = self.config['num_scale'] - 1
-            
+
         self.paint2image_pyramid = []  # just for enjoy
         for scale in range(init_scale, self.config['num_scale']):
             generator = self.generator_pyramid[scale]
@@ -56,13 +56,19 @@ class Paint2Image(SinGAN):
             if not self.config['num_scale'] % 2:
                 n_rows = 2
                 n_cols = self.config['num_scale'] // 2
+
+                save_image = show_batch_torch(
+                    torch.cat(
+                        [self.generate_paint2image(scale).clamp(-1, 1) for scale in range(self.config['num_scale'])]),
+                    padding=2, n_rows=n_rows, n_cols=n_cols, return_img=True
+                )
             else:
-                n_rows, n_cols = None, None
-                
-            save_image = show_batch_torch(
-                torch.cat([self.generate_paint2image(scale).clamp(-1, 1) for scale in range(self.config['num_scale'])]),
-                padding=2, n_rows=n_rows, n_cols=n_cols, return_img=True
-            )
+                paint2images = [self.generate_paint2image(scale).clamp(-1, 1) for scale in
+                                range(self.config['num_scale'])]
+                paint2images += [torch.zeros_like(paint2images[0])]
+                save_image = show_batch_torch(
+                    torch.cat(paint2images), n_rows=2, n_cols=-1, return_img=True
+                )
             if save:
                 save_name = os.path.join(self.path_sample, "sample_scales")
                 plt.imsave(save_name, save_image)
