@@ -19,9 +19,24 @@ cd sinGAN
 - Install PyTorch and dependencies from http://pytorch.org   
 
 ### Model Training
-- Train a model:
+- Train a model - basic random sample:
 ```
-python main.py --location server
+python main.py
+```
+
+- Train a model - paint2image, editing, harmonization ..:
+```
+python main.py --config ./config/paint2image.yaml
+```
+
+- Train a model - super_resolution:
+```
+python main.py --config ./config/SR.yaml
+```
+
+- Test a model:
+```
+python applications.py --config ./config/editing.yaml --mode editing
 ```
 
 

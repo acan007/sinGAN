@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from torch import nn
 
 from chanye._utils_torch import reshape_batch_torch
+from chanye._visualizer import preprocess
 from model import SinGAN
 from utils import normalize_image
 
@@ -56,7 +57,7 @@ class Paint2Image(SinGAN):
                 n_rows = 2
                 n_cols = self.num_scale // 2
 
-                save_image = reshape_batch_torch(
+                save_image, _, _ = reshape_batch_torch(
                     torch.cat(
                         [self.generate_paint2image(scale).clamp(-1, 1) for scale in range(self.num_scale)]),
                     padding=2, n_rows=n_rows, n_cols=n_cols
@@ -65,11 +66,13 @@ class Paint2Image(SinGAN):
                 paint2images = [self.generate_paint2image(scale).clamp(-1, 1) for scale in
                                 range(self.num_scale)]
                 paint2images += [torch.zeros_like(paint2images[0])]
-                save_image = reshape_batch_torch(
+                save_image, _, _ = reshape_batch_torch(
                     torch.cat(paint2images), n_rows=2, n_cols=-1
                 )
+
+            save_image = preprocess(save_image)  # preprocess image
             if save:
                 save_name = os.path.join(self.path_sample, "paint2image")
                 plt.imsave(save_name, save_image)
-                print("Result Saved:" + save_name)
+                print("Paint to Image samples Saved:" + save_name)
         return save_image

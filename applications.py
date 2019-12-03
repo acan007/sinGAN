@@ -4,8 +4,7 @@ import click
 import torch
 import matplotlib.pyplot as plt
 
-from chanye._settings import set_numpy_precision, seed_random
-from utils import get_config
+from utils import get_config, set_numpy_precision, seed_random
 from model import SinGAN
 from paint_to_image import Paint2Image
 from harmonization import Harmonization

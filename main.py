@@ -4,8 +4,7 @@ import click
 import torch
 import matplotlib.pyplot as plt
 
-from chanye._settings import  set_numpy_precision, seed_random
-from utils import get_config
+from utils import get_config, set_numpy_precision, seed_random
 from model import SinGAN
 
 # TODO
@@ -16,7 +15,6 @@ from model import SinGAN
 2. 나머지는 model 에서 train() 하고 인퍼런스만 딴데서
 3. 
 """
-
 
 @click.command()
 @click.option('--config', type=str, default='./config/random_sample.yaml', help='Path to the config file.')

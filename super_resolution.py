@@ -7,9 +7,9 @@ import torch
 import matplotlib.pyplot as plt
 from torch import nn
 
-from chanye._utils_torch import show_torch, show_batch_torch
-from chanye._settings import set_dev_location, get_dataset_path, set_numpy_precision, seed_random
-from utils import get_config
+from chanye._utils_torch import torch2numpy
+from chanye._visualizer import preprocess
+from utils import get_config, set_numpy_precision, seed_random
 from model import SinGAN
 
 
@@ -45,12 +45,12 @@ class SuperResolution(SinGAN):
                 super_resolution = generator_0(super_resolution, noise_optimal)
                 self.repo.append(super_resolution)
 
-            super_resolution = show_torch(super_resolution.clamp(-1, 1), return_img=True)
+            super_resolution = preprocess(torch2numpy(super_resolution.clamp(-1, 1)))  # TODO : check
 
             if save:
                 save_name = os.path.join(self.path_sample, "super_resolution")
                 plt.imsave(save_name, super_resolution)
-                print("Result Saved:" + save_name)
+                print("Super resolution Saved:" + save_name)
         return super_resolution
 
 

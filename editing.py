@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from torch import nn
 
 from chanye._utils_torch import reshape_batch_torch
+from chanye._visualizer import preprocess
 from utils import normalize_image
 from model import SinGAN
 
@@ -56,7 +57,7 @@ class Editing(SinGAN):
                 n_rows = 2
                 n_cols = self.num_scale // 2
 
-                save_image = reshape_batch_torch(
+                save_image, _, _ = reshape_batch_torch(
                     torch.cat(
                         [self.generate_editing(scale).clamp(-1, 1) for scale in range(self.num_scale)]),
                     padding=2, n_rows=n_rows, n_cols=n_cols
@@ -64,11 +65,13 @@ class Editing(SinGAN):
             else:
                 editings = [self.generate_editing(scale).clamp(-1, 1) for scale in range(self.num_scale)]
                 editings += [torch.zeros_like(editings[0])]
-                save_image = reshape_batch_torch(
+                save_image, _, _ = reshape_batch_torch(
                     torch.cat(editings), n_rows=2, n_cols=-1
                 )
+
+            save_image = preprocess(save_image)  # preprocess image
             if save:
                 save_name = os.path.join(self.path_sample, "editing")
                 plt.imsave(save_name, save_image)
-                print("Result Saved:" + save_name)
+                print("Editing samples Saved:" + save_name)
         return save_image

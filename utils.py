@@ -17,6 +17,21 @@ def normalize_image(image):
     return image / 127.5 - 1
 
 
+def seed_random():
+    import random
+    # import tensorflow as tf
+    import torch
+
+    random.seed(123)
+    np.random.seed(123)
+    # tf.set_random_seed(123)
+    torch.manual_seed(123)
+
+
+def set_numpy_precision(precision=4):
+    np.set_printoptions(precision=precision, linewidth=200, edgeitems=5, suppress=True)
+
+
 def get_scheduler(optimizer, config, iterations=-1):
     policy = config.get('lr_policy', None)
     if not policy or policy == 'constant':

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from torch import nn
 
 from chanye._utils_torch import reset_gradients, reshape_batch_torch
-
+from chanye._visualizer import preprocess
 from networks import Generator, Discriminator
 from utils import get_scheduler, weights_init, normalize_image
 
@@ -29,7 +29,7 @@ class SinGAN(nn.Module):
         self.lr = config['lr']
         self.beta1 = config['beta1']
         self.beta2 = config['beta2']
-        self.weight_decay = config['weight_decay']
+#         self.weight_decay = config['weight_decay']
         self.num_scale = self.config['num_scale']
         self.scale_factor = self.config['scale_factor']
 
@@ -80,7 +80,7 @@ class SinGAN(nn.Module):
         self.assign_network_at_scale_begin(0)
 
         self.criterion_l2 = nn.MSELoss()
-        self.to(device)
+        self.to(self.device)
 
     def adjust_scale_factor_by_image(self):
         img_shape = self.input.shape
@@ -154,10 +154,8 @@ class SinGAN(nn.Module):
 
         params_d = list(self.discriminator.parameters())
         params_g = list(self.generator.parameters())
-        self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2),
-                                            weight_decay=self.weight_decay)
-        self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2),
-                                            weight_decay=self.weight_decay)
+        self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2))
+        self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2))
 
         # --- init weights
         if not scale % 4:
@@ -293,14 +291,16 @@ class SinGAN(nn.Module):
 
         self.eval_mode_all()
         with torch.no_grad():
-            save_image = reshape_batch_torch(
+            save_image, _, _ = reshape_batch_torch(
                 torch.cat([self.generate_fake_image(scale).clamp(-1, 1) for _ in range(20)]),
                 n_cols=4, n_rows=5, padding=2
             )
+            save_image = preprocess(save_image)  # preprocess image
+
             if save:
                 save_name = os.path.join(self.path_sample, "scale_{:02}".format(scale))
                 plt.imsave(save_name, save_image)
-                print("Result Saved:" + save_name)
+                print("Test samples Saved:" + save_name)
         return save_image
 
     def test_samples(self, save):
