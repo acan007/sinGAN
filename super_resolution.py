@@ -1,7 +1,6 @@
 import math
 import os
 import sys
-
 import click
 import torch
 import matplotlib.pyplot as plt
@@ -9,8 +8,7 @@ from torch import nn
 
 from chanye._utils_torch import torch2numpy
 from chanye._visualizer import preprocess
-from utils import get_config, set_numpy_precision, seed_random
-from model import SinGAN
+from sinGAN import SinGAN
 
 
 class SuperResolution(SinGAN):
@@ -52,25 +50,3 @@ class SuperResolution(SinGAN):
                 plt.imsave(save_name, super_resolution)
                 print("Super resolution Saved:" + save_name)
         return super_resolution
-
-
-@click.command()
-@click.option('--config', type=str, default='./config/SR.yaml', help='Path to the config file.')
-@click.option('--dataset_path', type=str, default='./assets/Input', help='Path to root dataset path')
-@click.option('--resume', default=False, help='whether resume and train')
-def main(config, dataset_path, resume):
-    seed_random()
-    set_numpy_precision()
-
-    # model
-    model = SuperResolution(get_config(config), dataset_path)
-    # TODO
-    # if resume:
-    #     model.load_models(load_path, resume)
-
-    # train
-    model.train()
-
-
-if __name__ == '__main__':
-    main()

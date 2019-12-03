@@ -8,7 +8,7 @@ from torch import nn
 from chanye._utils_torch import reshape_batch_torch
 from chanye._visualizer import preprocess
 from utils import normalize_image
-from model import SinGAN
+from sinGAN import SinGAN
 
 
 class Editing(SinGAN):

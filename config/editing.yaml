@@ -33,6 +33,6 @@ path_data: Images/stone.png                     # path for source data
 path_naive_data: Editing/stone_edit.png         # path for naive data
 path_sample_save: results/samples               # path for sample saving
 path_model_save: results/models                 # path for model saving
-mode: editing                                   # prefix for save path
+save_name: editing                              # prefix for save path
 
 

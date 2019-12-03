@@ -33,7 +33,7 @@ class SinGAN(nn.Module):
         self.num_scale = self.config['num_scale']
         self.scale_factor = self.config['scale_factor']
 
-        self.name = config['path_data'].split('/')[-1].split('.')[0] + "_" + config['mode']
+        self.name = config['path_data'].split('/')[-1].split('.')[0] + "_" + config['save_name']
         self.path_model = os.path.join(config['path_model_save'], self.name)
         self.path_sample = os.path.join(config['path_sample_save'], self.name)
 

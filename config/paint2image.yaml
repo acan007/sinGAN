@@ -33,4 +33,4 @@ path_data: Images/cows.png                     # path of source data
 path_naive_data: Paint/cows.png                # path for naive data
 path_sample_save: results/samples              # path of sample saving
 path_model_save: results/models                # path of model saving
-mode: paint2image                              # prefix for save path
+save_name: paint2image                         # prefix for save path

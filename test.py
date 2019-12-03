@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from utils import get_config, set_numpy_precision, seed_random
-from model import SinGAN
+from sinGAN import SinGAN
 from paint_to_image import Paint2Image
 from harmonization import Harmonization
 from editing import Editing
@@ -20,10 +20,10 @@ from super_resolution import SuperResolution
 
 @click.command()
 @click.option('--config', type=str, default='./config/random_sample.yaml', help='Path to the config file.')
-@click.option('--dataset_path', type=str, default='./assets/Input', help='Path to root dataset path')
 @click.option('--mode', type=str, required=True,
               help='which application [paint2image | editing | harmonization | random_sample | SR]')
-def main(config, dataset_path, mode):
+@click.option('--dataset_path', type=str, default='./assets/Input', help='Path to root dataset path')
+def main(config, mode, dataset_path):
     seed_random()
     set_numpy_precision()
 

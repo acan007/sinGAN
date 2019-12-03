@@ -34,4 +34,4 @@ path_naive_data: Harmonization/starry_night_naive.png               # path for n
 path_mask_data: Harmonization/starry_night_naive_mask.png           # path for mask data
 path_sample_save: results/samples                                   # path of sample saving
 path_model_save: results/models                                     # path of model saving
-mode: harmonization                                                 # prefix for save path
+save_name: harmonization                                            # prefix for save path
