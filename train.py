@@ -12,9 +12,6 @@ from editing import Editing
 from super_resolution import SuperResolution
 
 
-# TODO
-# 1. SR 에서 학습할때 z_rec 넣는 방법
-
 @click.command()
 @click.option('--config', type=str, default='./config/random_sample.yaml', help='Path to the config file.')
 @click.option('--mode', type=str, default='random_sample',
@@ -24,7 +21,6 @@ def main(config, mode, resume):
     seed_random()
     set_numpy_precision()
 
-    # model
     if mode == 'random_sample':
         model_type = SinGAN
     elif mode == 'paint2image':
@@ -39,7 +35,6 @@ def main(config, mode, resume):
         print("Invalid Parameter")
         raise ValueError
 
-    # model
     model = model_type(get_config(config))
     if resume:
         model.resume_train()

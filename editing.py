@@ -18,10 +18,15 @@ class Editing(SinGAN):
         naive_img = plt.imread(os.path.join(config['path_dataset_root'], config['path_naive']))
         self.naive_img = normalize_image(naive_img)
 
-        self.naive_pyramid = []
-        for i in range(self.num_scale):
-            height_scaled = self.height_pyramid[i]
-            width_scaled = self.width_pyramid[i]
+        self.naive_height_pyramid, self.naive_width_pyramid, self.naive_pyramid = [], [], []
+        width, height, _ = self.naive_img.shape
+        for scale in range(self.num_scale + 1):
+            multiplier = self.multiplier_pyramid[scale]
+            height_scaled = int(round(height * multiplier))
+            width_scaled = int(round(width * multiplier))
+
+            self.naive_height_pyramid.append(height_scaled)
+            self.naive_width_pyramid.append(width_scaled)
 
             processed = cv2.resize(self.naive_img, (height_scaled, width_scaled))
             processed = torch.tensor(np.transpose(processed, [2, 0, 1])[np.newaxis])
@@ -29,10 +34,10 @@ class Editing(SinGAN):
 
     def generate_editing(self, init_scale):
         if init_scale == -1:
-            init_scale = self.num_scale - 1
+            init_scale = self.num_scale
 
         self.editing_pyramid = []  # just for enjoy
-        for scale in range(init_scale, self.num_scale):
+        for scale in range(init_scale, self.num_scale + 1):
             generator = self.generator_pyramid[scale]
             noise_optimal = self.noise_optimal_pyramid[scale]
             sigma = self.sigma_pyramid[scale]
@@ -42,7 +47,9 @@ class Editing(SinGAN):
                 editing = generator(naive, noise_optimal * sigma)
 
             else:
-                editing = nn.Upsample((self.width_pyramid[scale], self.height_pyramid[scale]))(editing)
+                editing = nn.Upsample(
+                    (self.naive_width_pyramid[scale], self.naive_height_pyramid[scale])
+                )(editing)
                 editing = generator(editing, noise_optimal * sigma)
 
             self.editing_pyramid.append(editing)
@@ -59,11 +66,11 @@ class Editing(SinGAN):
 
                 save_image, _, _ = reshape_batch_torch(
                     torch.cat(
-                        [self.generate_editing(scale).clamp(-1, 1) for scale in range(self.num_scale)]),
+                        [self.generate_editing(scale).clamp(-1, 1) for scale in range(1, self.num_scale + 1)]),
                     padding=2, n_rows=n_rows, n_cols=n_cols
                 )
             else:
-                editings = [self.generate_editing(scale).clamp(-1, 1) for scale in range(self.num_scale)]
+                editings = [self.generate_editing(scale).clamp(-1, 1) for scale in range(1, self.num_scale + 1)]
                 editings += [torch.zeros_like(editings[0])]
                 save_image, _, _ = reshape_batch_torch(
                     torch.cat(editings), n_rows=2, n_cols=-1

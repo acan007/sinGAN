@@ -31,7 +31,7 @@ class SinGAN(nn.Module):
         self.num_scale = self.config['num_scale']
         self.scale_factor = self.config['scale_factor']
 
-        self.name = config['path_data'].split('/')[-1].split('.')[0] + "_" + config['save_name']
+        self.name = config['path_input'].split('/')[-1].split('.')[0] + "_" + config['save_name']
         self.path_model = os.path.join(config['path_model_save'], self.name)
         self.path_sample = os.path.join(config['path_sample_save'], self.name)
 
@@ -42,9 +42,10 @@ class SinGAN(nn.Module):
 
         # --- pyramids
         width, height, _ = self.input.shape
-        self.height_pyramid, self.width_pyramid, self.real_pyramid = [], [], []
-        for scale in range(self.num_scale - 1, -1, -1):
+        self.multiplier_pyramid, self.height_pyramid, self.width_pyramid, self.real_pyramid = [], [], [], []
+        for scale in range(self.num_scale, -1, -1):
             multiplier = (1 / self.scale_factor) ** scale
+            self.multiplier_pyramid.append(multiplier)
 
             height_scaled = int(round(height * multiplier))
             width_scaled = int(round(width * multiplier))
@@ -57,7 +58,7 @@ class SinGAN(nn.Module):
             self.real_pyramid.append(processed.to(self.device, torch.float))
 
         self.noise_optimal_pyramid = []
-        for scale in range(self.num_scale):
+        for scale in range(self.num_scale + 1):
             if not scale:
                 noise = torch.randn_like(self.real_pyramid[scale]).to(self.device)
             else:
@@ -65,7 +66,7 @@ class SinGAN(nn.Module):
             self.noise_optimal_pyramid.append(noise)
 
         self.generator_pyramid, self.discriminator_pyramid = [], []
-        for scale in range(self.num_scale):
+        for scale in range(self.num_scale + 1):
             dim = 32 * 2 ** (scale // 4)  # increase dim by a factor of 2 every 4 scales
             if self.device.type == 'cuda':
                 self.generator_pyramid.append(Generator(input_dim=3, dim=dim, n_layers=5).cuda())
@@ -90,7 +91,7 @@ class SinGAN(nn.Module):
         )
         scale_factor = np.power(min_dim / self.config['coarsest_dim'], 1 / num_scale)
 
-        self.config['num_scale'] = num_scale
+        self.config['num_scale'] = num_scale  # TODO : +1
         self.config['scale_factor'] = scale_factor
 
     def get_sigma(self, scale, real):
@@ -115,7 +116,7 @@ class SinGAN(nn.Module):
 
     def generate_fake_image(self, scale):
         if scale == -1:
-            scale = self.num_scale - 1
+            scale = self.num_scale
 
         fake_image = None
         for s in range(scale + 1):
@@ -132,7 +133,7 @@ class SinGAN(nn.Module):
 
     def generate_recon_image(self, scale):
         if scale == -1:
-            scale = self.num_scale - 1
+            scale = self.num_scale
 
         recon_image = None
         for s in range(scale + 1):
@@ -219,16 +220,16 @@ class SinGAN(nn.Module):
 
     def train(self, init_scale=0):
         print("Start sinGAN Training - {}, {} scales".format(self.name, self.num_scale))
-        for scale in range(init_scale, self.num_scale):
+        for scale in range(init_scale, self.num_scale + 1):
             for step in range(self.config['n_iter']):
                 if not step:
-                    print("scale", scale + 1, "-" * 100)
+                    print("scale", scale, "-" * 100)
                     self.assign_network_at_scale_begin(scale)
                     self.assign_parameters_at_scale_begin(scale)
 
                 self.train_single_scale_pyramid(scale)
                 if not (step + 1) % self.config['log_iter']:
-                    self.print_log(scale + 1, step + 1)
+                    self.print_log(scale, step + 1)
 
             self.save_image = self.test_samples_scale(scale, save=True)
             self.save_models(scale)
@@ -262,38 +263,35 @@ class SinGAN(nn.Module):
             'sigma_pyramid': self.sigma_pyramid,
             'real_pyramid': self.real_pyramid,
             'current_scale': scale,
-            'current_optimizer_d': self.optimizer_d.state_dict(),
-            'current_optimizer_g': self.optimizer_g.state_dict(),
         }
 
         save_name = os.path.join(self.path_model, "scale_{:02}".format(scale))
         torch.save(state, save_name)
 
-    def load_models(self, scale, train=True):
+    def load_models(self, scale, train=False):
         if scale == -1:
-            scale = self.num_scale - 1
+            scale = self.num_scale
 
         save_name = os.path.join(self.path_model, "scale_{:02}".format(scale))
         checkpoint = torch.load(save_name)
 
         # weight
+        self.scale = checkpoint['current_scale']
         self.generator_pyramid = checkpoint['generator_pyramid']
         self.discriminator_pyramid = checkpoint['discriminator_pyramid']
         self.noise_optimal_pyramid = checkpoint['noise_optimal_pyramid']
-        self.sigma_pyramid = checkpoint['sigma_pyramid']
         self.real_pyramid = checkpoint['real_pyramid']
-        self.scale = checkpoint['current_scale']
-
         if train:
-            self.optimizer_d.load_state_dict(checkpoint['current_optimizer_d'])
-            self.optimizer_g.load_state_dict(checkpoint['current_optimizer_g'])
+            self.sigma_pyramid = checkpoint['sigma_pyramid'][:self.scale]
+        else:
+            self.sigma_pyramid = checkpoint['sigma_pyramid']
 
     def resume_train(self, scale=False):
         if not scale:
             last_model_path = sorted(glob.glob(os.path.join(self.path_model, '*')))[-1]
             scale = int(last_model_path.split('/')[-1][-2:])
 
-        self.load_models(scale, True)
+        self.load_models(scale, train=True)
         print("Resume Training - scale: ", scale)
         self.train(scale)
 

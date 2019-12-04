@@ -32,7 +32,7 @@ class SuperResolution(SinGAN):
             generator_0 = self.generator_pyramid[-1]
             super_resolution = self.real_pyramid[-1]
             self.repo = []
-            for scale in range(self.num_scale):
+            for scale in range(self.num_scale + 1):
                 width_sr = round(width * self.scale_factor ** scale)
                 height_sr = round(height * self.scale_factor ** scale)
 

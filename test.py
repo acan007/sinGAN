@@ -20,7 +20,6 @@ def main(config, mode):
     seed_random()
     set_numpy_precision()
 
-    # model
     if mode == 'random_sample':
         model_type = SinGAN
     elif mode == 'paint2image':
