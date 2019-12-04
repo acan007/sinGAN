@@ -19,9 +19,8 @@ from super_resolution import SuperResolution
 @click.option('--config', type=str, default='./config/random_sample.yaml', help='Path to the config file.')
 @click.option('--mode', type=str, default='random_sample',
               help='which application [paint2image | editing | harmonization | random_sample | SR]')
-@click.option('--dataset_path', type=str, default='./assets/Input', help='Path to root dataset path')
 @click.option('--resume', default=False, help='whether resume and train')
-def main(config, mode, dataset_path, resume):
+def main(config, mode, resume):
     seed_random()
     set_numpy_precision()
 
@@ -41,10 +40,9 @@ def main(config, mode, dataset_path, resume):
         raise ValueError
 
     # model
-    model = model_type(get_config(config), dataset_path)
-    # TODO
-    # if resume:
-    #     model.load_models(load_path, resume)
+    model = model_type(get_config(config))
+    if resume:
+        model.resume_train()
 
     model.train()
 

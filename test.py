@@ -11,12 +11,12 @@ from harmonization import Harmonization
 from editing import Editing
 from super_resolution import SuperResolution
 
+
 @click.command()
 @click.option('--config', type=str, default='./config/random_sample.yaml', help='Path to the config file.')
 @click.option('--mode', type=str, required=True,
               help='which application [paint2image | editing | harmonization | random_sample | SR]')
-@click.option('--dataset_path', type=str, default='./assets/Input', help='Path to root dataset path')
-def main(config, mode, dataset_path):
+def main(config, mode):
     seed_random()
     set_numpy_precision()
 
@@ -35,7 +35,7 @@ def main(config, mode, dataset_path):
         print("Invalid Parameter")
         raise ValueError
 
-    model = model_type(get_config(config), dataset_path)
+    model = model_type(get_config(config))
     model.test_samples(save=True)
 
 

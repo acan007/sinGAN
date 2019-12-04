@@ -13,22 +13,21 @@ from utils import get_scheduler, weights_init, normalize_image
 
 
 class SinGAN(nn.Module):
-    def __init__(self, config, dataset_path):
+    def __init__(self, config):
         super(SinGAN, self).__init__()
 
         # --- member variables
         self.config = config
-        self.dataset_path = dataset_path
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        input = plt.imread(os.path.join(dataset_path, config['path_data']))
-        self.input = normalize_image(input)
+        self.input = plt.imread(os.path.join(config['path_dataset_root'], config['path_input']))
+        self.input = normalize_image(self.input)
         self.adjust_scale_factor_by_image()
 
         self.lr = config['lr']
         self.beta1 = config['beta1']
         self.beta2 = config['beta2']
-        #         self.weight_decay = config['weight_decay']
+        self.weight_decay = config['weight_decay']
         self.num_scale = self.config['num_scale']
         self.scale_factor = self.config['scale_factor']
 
@@ -87,7 +86,8 @@ class SinGAN(nn.Module):
         min_dim = min(img_shape[idx_dim[0]], img_shape[idx_dim[1]])
 
         num_scale = int(
-            np.ceil(np.log(min_dim / self.config['coarsest_dim']) / np.log(self.config['scale_factor_init'])))
+            np.ceil(np.log(min_dim / self.config['coarsest_dim']) / np.log(self.config['scale_factor_init']))
+        )
         scale_factor = np.power(min_dim / self.config['coarsest_dim'], 1 / num_scale)
 
         self.config['num_scale'] = num_scale
@@ -154,8 +154,10 @@ class SinGAN(nn.Module):
 
         params_d = list(self.discriminator.parameters())
         params_g = list(self.generator.parameters())
-        self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2))
-        self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2))
+        self.optimizer_d = torch.optim.Adam(params_d, self.lr, (self.beta1, self.beta2),
+                                            weight_decay=self.weight_decay)
+        self.optimizer_g = torch.optim.Adam(params_g, self.lr, (self.beta1, self.beta2),
+                                            weight_decay=self.weight_decay)
 
         # --- init weights
         if not scale % 4:

@@ -8,6 +8,7 @@ beta1: 0.5                     # Adam parameter
 beta2: 0.999                   # Adam parameter
 init: kaiming                  # initialization [gaussian/kaiming/xavier/orthogonal]
 lr: 0.0005                     # initial learning rate
+weight_decay: 0.0001           # weight decay
 g_step: 3                      # generator inner steps
 d_step: 3                      # discriminator inner steps
 w_recon: 100                   # weight for sample reconstruction loss
@@ -27,7 +28,8 @@ dis:
   n_layer: 5                   # number of layers in each discriminator block
 
 # data options
-path_data: Images/mountains3.png               # path of source data
+path_dataset_root: assets/Input
+path_input: Images/mountains3.png              # path of source data
 path_sample_save: results/samples              # path of sample saving
 path_model_save: results/models                # path of model saving
 save_name: SR                                  # prefix for save path

@@ -12,8 +12,8 @@ from sinGAN import SinGAN
 
 
 class SuperResolution(SinGAN):
-    def __init__(self, config, dataset_path):
-        super().__init__(config, dataset_path)
+    def __init__(self, config):
+        super().__init__(config)
 
     def adjust_scale_factor_by_image(self):
         scale_factor = math.pow(1 / 2, 1 / 3)

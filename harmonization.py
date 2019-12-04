@@ -11,12 +11,12 @@ from utils import normalize_image
 
 
 class Harmonization(SinGAN):
-    def __init__(self, config, dataset_path):
-        super().__init__(config, dataset_path)
+    def __init__(self, config):
+        super().__init__(config)
 
-        naive_img = plt.imread(os.path.join(dataset_path, config['path_naive_data']))
+        naive_img = plt.imread(os.path.join(config['path_dataset_root'], config['path_naive_data']))
         self.naive_img = normalize_image(naive_img)
-        mask = plt.imread(os.path.join(dataset_path, config['path_mask_data']))
+        mask = plt.imread(os.path.join(config['path_dataset_root'], config['path_mask_data']))
         self.mask = torch.tensor(np.transpose(mask, [2, 0, 1])).to(self.device, torch.float)  # [np.newaxis])
 
         self.naive_pyramid = []
@@ -60,7 +60,7 @@ class Harmonization(SinGAN):
                 n_rows = 2
                 n_cols = self.num_scale // 2
 
-                save_image = reshape_batch_torch(
+                save_image, _, _ = reshape_batch_torch(
                     torch.cat(
                         [self.generate_harmonization(scale).clamp(-1, 1) for scale in range(self.num_scale)]),
                     padding=2, n_rows=n_rows, n_cols=n_cols
@@ -70,7 +70,7 @@ class Harmonization(SinGAN):
                 harmonizations = [self.generate_harmonization(scale).clamp(-1, 1) for scale in
                                   range(self.num_scale)]
                 harmonizations += [torch.zeros_like(harmonizations[0])]
-                save_image = reshape_batch_torch(
+                save_image, _, _ = reshape_batch_torch(
                     torch.cat(harmonizations), n_rows=2, n_cols=-1
                 )
 

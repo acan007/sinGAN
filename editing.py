@@ -12,10 +12,10 @@ from sinGAN import SinGAN
 
 
 class Editing(SinGAN):
-    def __init__(self, config, dataset_path):
-        super().__init__(config, dataset_path)
+    def __init__(self, config):
+        super().__init__(config)
 
-        naive_img = plt.imread(os.path.join(dataset_path, config['path_naive_data']))
+        naive_img = plt.imread(os.path.join(config['path_dataset_root'], config['path_naive']))
         self.naive_img = normalize_image(naive_img)
 
         self.naive_pyramid = []
