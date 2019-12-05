@@ -23,29 +23,35 @@ Most of parameters and settings for model is determined from config file. Theref
 
 Importantly, you should be careful about the path of input image and which mode(application, e.g. random_sample, editing..) you wanna train and test. Once model is trained for specific config file, inference after train is possible with only desired config file, because the path for saved model is also inside of config file. However, if you edit the config file correctly, inference is possible  
 
-- Train a model (random_sample for `assets/Input/Image/birds.png`) :
+#### Train a model (random_sample for `assets/Input/Image/birds.png`) :
 
 ``` 
 python train.py
 ```
 
-- Train a model - paint2image, editing, harmonization ..:
+#### Train a model - paint2image, editing, harmonization ..:
 
-For these application, you should declare `path of naive image` inside of config file. 
+For these application, you should declare `path of naive image` inside config file.
+
+Actually, `mode` flag is not necessary for train precess 
 ```
 python train.py --config ./config/paint2image.yaml
 ```
 
-- Train a model - super_resolution:
+#### Train a model - super_resolution:
 
-For super resolution, you should declare `sr_factor`  inside of config file.
+For super resolution, you should declare `sr_factor`  inside config file.
+
+`mode` flag is necessary for SR task
 ```
-python train.py --config ./config/SR.yaml
+python train.py --config ./config/SR.yaml  --mode SR
 ```
 
-- Test a model:
+#### Test a model for various applications:
 
-_parameter_ `--mode` determine the types of application   
+`--mode` flag determine the types of application
+
+Result output will be saved in `results` folder according to your config file   
 ```
 python test.py --config ./config/editing.yaml --mode editing
 ```
