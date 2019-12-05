@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from torch import nn
 
 from chanye._utils_torch import reshape_batch_torch
+from chanye._visualizer import preprocess
 from sinGAN import SinGAN
 from utils import normalize_image
 
@@ -80,6 +81,7 @@ class Harmonization(SinGAN):
                     torch.cat(harmonizations), n_rows=2, n_cols=-1
                 )
 
+            save_image = preprocess(save_image)  # preprocess image
             if save:
                 save_name = os.path.join(self.path_sample, "harmonization.jpg")
                 plt.imsave(save_name, save_image)

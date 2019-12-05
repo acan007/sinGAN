@@ -268,7 +268,7 @@ class SinGAN(nn.Module):
         save_name = os.path.join(self.path_model, "scale_{:02}".format(scale))
         torch.save(state, save_name)
 
-    def load_models(self, scale, train=False):
+    def load_models(self, scale):
         if scale == -1:
             scale = self.num_scale
 
@@ -281,19 +281,16 @@ class SinGAN(nn.Module):
         self.discriminator_pyramid = checkpoint['discriminator_pyramid']
         self.noise_optimal_pyramid = checkpoint['noise_optimal_pyramid']
         self.real_pyramid = checkpoint['real_pyramid']
-        if train:
-            self.sigma_pyramid = checkpoint['sigma_pyramid'][:self.scale]
-        else:
-            self.sigma_pyramid = checkpoint['sigma_pyramid']
+        self.sigma_pyramid = checkpoint['sigma_pyramid'][:self.scale + 1]
 
     def resume_train(self, scale=False):
         if not scale:
             last_model_path = sorted(glob.glob(os.path.join(self.path_model, '*')))[-1]
             scale = int(last_model_path.split('/')[-1][-2:])
 
-        self.load_models(scale, train=True)
+        self.load_models(scale)
         print("Resume Training - scale: ", scale)
-        self.train(scale)
+        self.train(scale + 1)
 
     def test_samples_scale(self, scale, save):
         os.makedirs(self.path_sample, exist_ok=True)

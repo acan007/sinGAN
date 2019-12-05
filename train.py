@@ -38,8 +38,8 @@ def main(config, mode, resume):
     model = model_type(get_config(config))
     if resume:
         model.resume_train()
-
-    model.train()
+    else:
+        model.train(init_scale=0)
 
 
 if __name__ == '__main__':
