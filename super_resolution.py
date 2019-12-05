@@ -46,7 +46,7 @@ class SuperResolution(SinGAN):
             super_resolution = preprocess(torch2numpy(super_resolution.clamp(-1, 1)))  # TODO : check
 
             if save:
-                save_name = os.path.join(self.path_sample, "super_resolution")
+                save_name = os.path.join(self.path_sample, "super_resolution.jpg")
                 plt.imsave(save_name, super_resolution)
                 print("Super resolution Saved:" + save_name)
         return super_resolution

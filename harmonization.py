@@ -81,7 +81,7 @@ class Harmonization(SinGAN):
                 )
 
             if save:
-                save_name = os.path.join(self.path_sample, "harmonization")
+                save_name = os.path.join(self.path_sample, "harmonization.jpg")
                 plt.imsave(save_name, save_image)
                 print("Result Saved:" + save_name)
         return save_image

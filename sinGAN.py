@@ -307,7 +307,7 @@ class SinGAN(nn.Module):
             save_image = preprocess(save_image)  # preprocess image
 
             if save:
-                save_name = os.path.join(self.path_sample, "scale_{:02}".format(scale))
+                save_name = os.path.join(self.path_sample, "scale_{:02}.jpg".format(scale))
                 plt.imsave(save_name, save_image)
                 print("Test samples Saved:" + save_name)
         return save_image

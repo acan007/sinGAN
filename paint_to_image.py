@@ -78,7 +78,7 @@ class Paint2Image(SinGAN):
 
             save_image = preprocess(save_image)  # preprocess image
             if save:
-                save_name = os.path.join(self.path_sample, "paint2image")
+                save_name = os.path.join(self.path_sample, "paint2image.jpg")
                 plt.imsave(save_name, save_image)
                 print("Paint to Image samples Saved:" + save_name)
         return save_image
